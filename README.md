@@ -38,12 +38,27 @@ The system defines the following user classes:
 * Hostel Administrator – Handles hostel, room, allocation, and reporting operations.
 * System Administrator – Manages system-level administration and access.
 
-## Documentation
+## Prerequisites
+- Python 3
+- MySQL Server
+- Git
 
-The current project documentation is available in the `docs/` directory.
+## Setup
+1. Clone the repository.
+2. Create and activate a Python virtual environment.
+3. Install dependencies using `pip install -r requirements.txt`.
+4. Create the MySQL database `hms_db`.
+5. Copy `.env.example` to `.env`.
+6. Configure your local database credentials and Django secret key.
+7. Run database migrations using `python manage.py migrate`.
+8. Start the development server using `python manage.py runserver`.
 
-* [Software Requirements Specification (SRS)](docs/Hostel_Management_System_SRS.pdf)
-* [Software Test Plan (STP)](docs/Hostel_Management_System_Test_Plan.pdf)
+## Environment Configuration
+See `.env.example` for the required environment variable names.
+Never commit `.env` or real credentials to Git.
+
+## Database
+The project uses MySQL through Django's MySQL database backend.
 
 The SRS defines the system scope, functional requirements, non-functional requirements, security requirements, user roles, interfaces, constraints, assumptions, and requirements traceability.
 
