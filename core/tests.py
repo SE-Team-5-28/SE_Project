@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.test import TestCase
 
@@ -9,6 +10,7 @@ from core.models import (
     Student,
     User,
 )
+from core.services import allocate_student
 
 
 class CoreModelTests(TestCase):
@@ -153,3 +155,118 @@ class CoreModelTests(TestCase):
                     room_code="TEST-A-104",
                     capacity=0,
                 )
+
+
+class AllocationServiceTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.user1 = User.objects.create_user(
+            username="service_student_one",
+            password="test-password-123",
+        )
+        cls.user2 = User.objects.create_user(
+            username="service_student_two",
+            password="test-password-123",
+        )
+
+        cls.student1 = Student.objects.create(
+            user=cls.user1,
+            student_id="SERVICE-STU-001",
+            department="Computer Science",
+            year_of_study=2,
+        )
+        cls.student2 = Student.objects.create(
+            user=cls.user2,
+            student_id="SERVICE-STU-002",
+            department="Information Science",
+            year_of_study=2,
+        )
+
+        cls.hostel = Hostel.objects.create(
+            name="Service Test Hostel",
+            address="Service Test Address",
+        )
+        cls.block = Block.objects.create(
+            hostel=cls.hostel,
+            name="Block A",
+        )
+        cls.room1 = Room.objects.create(
+            block=cls.block,
+            room_number="101",
+            room_code="SERVICE-A-101",
+            capacity=2,
+        )
+        cls.room2 = Room.objects.create(
+            block=cls.block,
+            room_number="102",
+            room_code="SERVICE-A-102",
+            capacity=2,
+        )
+
+    def test_allocate_student_when_room_has_space(self):
+        allocation = allocate_student(
+            student_id=self.student1.pk,
+            room_id=self.room1.pk,
+        )
+
+        self.assertEqual(allocation.student, self.student1)
+        self.assertEqual(allocation.room, self.room1)
+        self.assertEqual(
+            allocation.status,
+            Allocation.Status.ACTIVE,
+        )
+
+    def test_full_room_rejects_new_allocation(self):
+        self.room1.capacity = 1
+        self.room1.save(update_fields=["capacity"])
+
+        Allocation.objects.create(
+            student=self.student1,
+            room=self.room1,
+            status=Allocation.Status.ACTIVE,
+        )
+
+        with self.assertRaisesMessage(
+            ValidationError,
+            "This room is already at full capacity.",
+        ):
+            allocate_student(
+                student_id=self.student2.pk,
+                room_id=self.room1.pk,
+            )
+
+    def test_service_rejects_student_with_active_allocation(self):
+        Allocation.objects.create(
+            student=self.student1,
+            room=self.room1,
+            status=Allocation.Status.ACTIVE,
+        )
+
+        with self.assertRaisesMessage(
+            ValidationError,
+            "This student already has an active allocation.",
+        ):
+            allocate_student(
+                student_id=self.student1.pk,
+                room_id=self.room2.pk,
+            )
+
+    def test_service_rejects_nonexistent_room(self):
+        with self.assertRaisesMessage(
+            ValidationError,
+            "The requested room does not exist.",
+        ):
+            allocate_student(
+                student_id=self.student1.pk,
+                room_id=999999,
+            )
+
+    def test_service_rejects_nonexistent_student(self):
+        with self.assertRaisesMessage(
+            ValidationError,
+            "The requested student does not exist.",
+        ):
+            allocate_student(
+                student_id=999999,
+                room_id=self.room1.pk,
+            )
