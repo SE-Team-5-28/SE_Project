@@ -6,9 +6,7 @@ from . import views
 urlpatterns = [
     path(
         "login/",
-        auth_views.LoginView.as_view(
-            template_name="core/login.html"
-        ),
+        auth_views.LoginView.as_view(template_name="core/login.html"),
         name="login",
     ),
     path(
@@ -17,4 +15,19 @@ urlpatterns = [
         name="logout",
     ),
     path("", views.dashboard, name="dashboard"),
+    path(
+        "role/student/",
+        views.student_dashboard,
+        name="student_dashboard",
+    ),
+    path(
+        "role/warden/",
+        views.warden_dashboard,
+        name="warden_dashboard",
+    ),
+    path(
+        "role/administrator/",
+        views.administrator_dashboard,
+        name="administrator_dashboard",
+    ),
 ]

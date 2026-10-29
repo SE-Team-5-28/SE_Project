@@ -8,7 +8,29 @@
 <body>
     <h1>Hostel Management System</h1>
 
+    <h2>Dashboard</h2>
+
     <p>Welcome, {{ request.user.username }}.</p>
+    <p>Your role: {{ request.user.get_role_display }}</p>
+
+    {% if request.user.role == "STUDENT" %}
+        <section>
+            <h3>Student Navigation</h3>
+            <p><a href="{% url 'student_dashboard' %}">Student Dashboard</a></p>
+        </section>
+
+    {% elif request.user.role == "WARDEN" %}
+        <section>
+            <h3>Warden Navigation</h3>
+            <p><a href="{% url 'warden_dashboard' %}">Warden Dashboard</a></p>
+        </section>
+
+    {% elif request.user.role == "HOSTEL_ADMIN" or request.user.role == "SYSTEM_ADMIN" %}
+        <section>
+            <h3>Administrator Navigation</h3>
+            <p><a href="{% url 'administrator_dashboard' %}">Administrator Dashboard</a></p>
+        </section>
+    {% endif %}
 
     <form method="post" action="{% url 'logout' %}">
         {% csrf_token %}

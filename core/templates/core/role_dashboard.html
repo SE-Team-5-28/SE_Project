@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Hostel Management - {{ page_title }}</title>
+</head>
+<body>
+    <h1>Hostel Management System</h1>
+
+    <h2>{{ page_title }}</h2>
+
+    <p>Welcome, {{ request.user.username }}.</p>
+    <p>Your role: {{ request.user.get_role_display }}</p>
+
+    {% if request.user.role == "STUDENT" %}
+        <section>
+            <h3>Student Access</h3>
+            <p>You are accessing the system as a student.</p>
+        </section>
+
+    {% elif request.user.role == "WARDEN" %}
+        <section>
+            <h3>Warden Access</h3>
+            <p>You are accessing the system as a warden.</p>
+        </section>
+
+    {% elif request.user.role == "HOSTEL_ADMIN" or request.user.role == "SYSTEM_ADMIN" %}
+        <section>
+            <h3>Administrator Access</h3>
+            <p>You are accessing the system as an administrator.</p>
+        </section>
+    {% endif %}
+
+    <p><a href="{% url 'dashboard' %}">Return to main dashboard</a></p>
+
+    <form method="post" action="{% url 'logout' %}">
+        {% csrf_token %}
+        <button type="submit">Log out</button>
+    </form>
+</body>
+</html>
