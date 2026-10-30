@@ -1,1 +1,101 @@
-{% extends 'core/base.html' %}{% block title %}Allocations{% endblock %}{% block content %}<div class="page-heading"><h1>Active allocations</h1><a class="button" href="{% url 'allocation_create' %}">Allocate room</a></div><div class="table-wrap"><table><tr><th>Student</th><th>Room</th><th>Allocated</th></tr>{% for allocation in allocations %}<tr><td>{{ allocation.student }}</td><td>{{ allocation.room }}</td><td>{{ allocation.allocated_at }}</td></tr>{% empty %}<tr><td colspan="3">No active allocations.</td></tr>{% endfor %}</table></div>{% endblock %}
+
+{% extends 'core/base.html' %}
+
+{% block title %}Student Check-in / Check-out{% endblock %}
+
+{% block content %}
+
+<div class="page-heading">
+    <h1>Student Check-in / Check-out</h1>
+
+    <a class="button" href="{% url 'allocation_create' %}">
+        Allocate Room
+    </a>
+</div>
+
+<div class="table-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th>Student</th>
+                <th>Room</th>
+                <th>Check-in Date</th>
+                <th>Check-out Date</th>
+                <th>Stay Status</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            {% for allocation in allocations %}
+            <tr>
+                <td>
+                    {{ allocation.student.full_name }}
+                    ({{ allocation.student.student_id }})
+                </td>
+
+                <td>
+                    {{ allocation.room }}
+                </td>
+
+                <td>
+                    {{ allocation.allocated_at|date:"d M Y, H:i" }}
+                </td>
+
+                <td>
+                    {% if allocation.checked_out_at %}
+                        {{ allocation.checked_out_at|date:"d M Y, H:i" }}
+                    {% else %}
+                        —
+                    {% endif %}
+                </td>
+
+                <td>
+                    {% if allocation.is_active %}
+                        <strong>Active</strong>
+                    {% else %}
+                        Checked Out
+                    {% endif %}
+                </td>
+
+                <td>
+                    {% if allocation.is_active %}
+
+                        <form
+                            method="post"
+                            action="{% url 'check_out' allocation.pk %}"
+                        >
+                            {% csrf_token %}
+                            <button type="submit">
+                                Check Out
+                            </button>
+                        </form>
+
+                    {% else %}
+
+                        <form
+                            method="post"
+                            action="{% url 'check_in' allocation.pk %}"
+                        >
+                            {% csrf_token %}
+                            <button type="submit">
+                                Check In
+                            </button>
+                        </form>
+
+                    {% endif %}
+                </td>
+            </tr>
+
+            {% empty %}
+            <tr>
+                <td colspan="6">
+                    No student allocation records found.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% endblock %}
