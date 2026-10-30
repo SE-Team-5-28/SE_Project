@@ -11,19 +11,19 @@ class StudentForm(forms.ModelForm):
 class HostelForm(forms.ModelForm):
     class Meta:
         model = Hostel
-        fields = ["name", "address", "warden"]
+        fields = ["name", "address"]
 
 
 class BlockForm(forms.ModelForm):
     class Meta:
         model = Block
-        fields = ["hostel", "name"]
+        fields = ["hostel", "name", "description"]
 
 
 class RoomForm(forms.ModelForm):
     class Meta:
         model = Room
-        fields = ["block", "number", "capacity"]
+        fields = ["block", "room_number", "room_code", "capacity", "description"]
 
 
 class AllocationForm(forms.ModelForm):
@@ -35,10 +35,16 @@ class AllocationForm(forms.ModelForm):
         cleaned = super().clean()
         student = cleaned.get("student")
         room = cleaned.get("room")
-        if student and Allocation.objects.filter(student=student, is_active=True).exclude(pk=self.instance.pk).exists():
+        
+        # Updated to use `status=Allocation.Status.ACTIVE` instead of `is_active=True`
+        if student and Allocation.objects.filter(student=student, status=Allocation.Status.ACTIVE).exclude(pk=self.instance.pk).exists():
             self.add_error("student", "This student already has an active allocation.")
-        if room and room.available_spaces <= 0:
-            self.add_error("room", "This room has no available space.")
+            
+        # Updated to calculate available spaces manually since the property was removed
+        if room:
+            occupied = Allocation.objects.filter(room=room, status=Allocation.Status.ACTIVE).count()
+            if occupied >= room.capacity:
+                self.add_error("room", "This room has no available space.")
         return cleaned
 
 
@@ -55,9 +61,12 @@ class TransferRequestForm(forms.ModelForm):
 
     def clean_requested_room(self):
         room = self.cleaned_data["requested_room"]
-        if room.available_spaces <= 0:
+        
+        occupied = Allocation.objects.filter(room=room, status=Allocation.Status.ACTIVE).count()
+        if occupied >= room.capacity:
             raise forms.ValidationError("That room is currently full.")
-        current = self.student.allocations.filter(is_active=True).first() if self.student else None
+            
+        current = self.student.allocations.filter(status=Allocation.Status.ACTIVE).first() if self.student else None
         if current and current.room_id == room.id:
             raise forms.ValidationError("Choose a room different from your current room.")
         return room
