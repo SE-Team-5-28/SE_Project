@@ -20,7 +20,7 @@ def allocate_student(student_id: int, room_id: int) -> Allocation:
 
     if Allocation.objects.filter(
         student=student,
-        status=Allocation.Status.ACTIVE,
+        is_active=True,
     ).exists():
         raise ValidationError(
             "This student already has an active allocation."
@@ -28,7 +28,7 @@ def allocate_student(student_id: int, room_id: int) -> Allocation:
 
     occupied = Allocation.objects.filter(
         room=room,
-        status=Allocation.Status.ACTIVE,
+        is_active=True,
     ).count()
 
     if occupied >= room.capacity:
@@ -41,7 +41,7 @@ def allocate_student(student_id: int, room_id: int) -> Allocation:
             return Allocation.objects.create(
                 student=student,
                 room=room,
-                status=Allocation.Status.ACTIVE,
+                is_active=True,
             )
     except IntegrityError as exc:
         raise ValidationError(

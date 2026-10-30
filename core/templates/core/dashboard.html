@@ -1,18 +1,1 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Hostel Management - Dashboard</title>
-</head>
-<body>
-    <h1>Hostel Management System</h1>
-
-    <p>Welcome, {{ request.user.username }}.</p>
-
-    <form method="post" action="{% url 'logout' %}">
-        {% csrf_token %}
-        <button type="submit">Log out</button>
-    </form>
-</body>
-</html>
+{% extends 'core/base.html' %}{% block title %}Dashboard{% endblock %}{% block content %}<h1>Welcome, {{ request.user.username }}</h1><div class="grid"><div class="card"><strong>{{ student_count }}</strong><span>Students</span></div><div class="card"><strong>{{ hostel_count }}</strong><span>Hostels</span></div><div class="card"><strong>{{ room_count }}</strong><span>Rooms</span></div><div class="card"><strong>{{ pending_transfers }}</strong><span>Pending transfers</span></div></div>{% if request.user.is_staff %}<p>Use the navigation to manage records and review requests.</p>{% else %}<p>Submit a transfer request when you need a room change.</p>{% endif %}{% endblock %}

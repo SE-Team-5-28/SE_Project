@@ -17,3 +17,6 @@ staticfiles/
 # Editors
 .vscode/
 .idea/
+
+# Codex/local dependency scratch space
+work/

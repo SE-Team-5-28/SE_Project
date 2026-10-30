@@ -97,12 +97,20 @@ Test cases are mapped to the functional, non-functional, and security requiremen
 
 ## Project Status
 
-Current Phase: Requirements and Test Planning
+Current Phase: Iterative implementation and verification
 
 ### Completed Documentation
 
 * Software Requirements Specification
 * Software Test Plan
+
+### Implemented in the current baseline
+
+* Normalized hostel, block, room, allocation, transfer, and audit records
+* Staff-only management screens with capacity and duplicate-allocation validation
+* Student transfer submission and staff approval/rejection workflow
+* Responsive shared layout and role-aware dashboards
+* Secure session/cookie defaults and production HTTPS deployment templates
 
 ### Planned
 
@@ -129,5 +137,20 @@ Hostel-Management-System/
 ## Project Scope
 
 The system focuses on hostel record management, room management, room allocation, occupancy, transfers, complaints, and administrative reporting.
+
+## Local development
+
+SQLite is the default local database, so the app can be run without a separate database server. To use MySQL, set `DB_ENGINE=mysql` and the `DB_*` values in `.env`. Never commit `.env`.
+
+```text
+python -m venv .venv
+.venv\\Scripts\\activate
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py createsuperuser
+python manage.py runserver
+```
+
+The production-like HTTPS templates and deployment notes are in `deploy/`. The normalized data model is documented in `docs/requirements-traceability.md`.
 
 University-wide academic administration and payment processing beyond potential future API integration are outside the current project scope.

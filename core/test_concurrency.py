@@ -2,11 +2,12 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 from queue import Queue
 
+from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.db import close_old_connections, connection
 from django.test import TransactionTestCase
 
-from core.models import Allocation, Block, Hostel, Room, Student, User
+from core.models import Allocation, Block, Hostel, Room, Student
 from core.services import allocate_student
 
 
@@ -26,18 +27,23 @@ class AllocationConcurrencyTests(TransactionTestCase):
         self.student1 = Student.objects.create(
             user=self.user1,
             student_id="CONCURRENT-001",
+            full_name="Concurrent Student One",
+            hostel_name="",
+            room_number="",
         )
         self.student2 = Student.objects.create(
             user=self.user2,
             student_id="CONCURRENT-002",
+            full_name="Concurrent Student Two",
+            hostel_name="",
+            room_number="",
         )
 
         hostel = Hostel.objects.create(name="Concurrency Test Hostel")
         block = Block.objects.create(hostel=hostel, name="Block A")
         self.room = Room.objects.create(
             block=block,
-            room_number="101",
-            room_code="CONCURRENT-A-101",
+            number="101",
             capacity=1,
         )
 
@@ -94,7 +100,7 @@ class AllocationConcurrencyTests(TransactionTestCase):
         self.assertEqual(
             Allocation.objects.filter(
                 room=self.room,
-                status=Allocation.Status.ACTIVE,
+                is_active=True,
             ).count(),
             1,
         )

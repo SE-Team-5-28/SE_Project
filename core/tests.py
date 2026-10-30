@@ -1,272 +1,714 @@
+﻿
+from io import StringIO
+
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
+from django.core.management import call_command
 from django.test import TestCase
+from django.urls import reverse
+from django.contrib.auth.models import User
+from django.utils import timezone
 
-from core.models import (
+from .models import (
     Allocation,
+    AuditLog,
     Block,
     Hostel,
     Room,
     Student,
-    User,
+    TransferRequest,
 )
-from core.services import allocate_student
+from .services import allocate_student
 
 
-class CoreModelTests(TestCase):
-    @classmethod
-    def setUpTestData(cls):
-        cls.user1 = User.objects.create_user(
-            username="student_one",
-            password="test-password-123",
-        )
-        cls.user2 = User.objects.create_user(
-            username="student_two",
-            password="test-password-123",
+class StudentRecordTests(TestCase):
+
+    def setUp(self):
+        self.staff_user = User.objects.create_user(
+            username="admin",
+            password="testpassword123",
+            is_staff=True,
         )
 
-        cls.student1 = Student.objects.create(
-            user=cls.user1,
-            student_id="TEST-STU-001",
-            department="Computer Science",
-            year_of_study=2,
-        )
-        cls.student2 = Student.objects.create(
-            user=cls.user2,
-            student_id="TEST-STU-002",
-            department="Information Science",
-            year_of_study=2,
+        self.normal_user = User.objects.create_user(
+            username="student",
+            password="testpassword123",
         )
 
-        cls.hostel = Hostel.objects.create(
-            name="Test Hostel",
-            address="Test Address",
-        )
-        cls.block = Block.objects.create(
-            hostel=cls.hostel,
-            name="Block A",
-        )
-        cls.room1 = Room.objects.create(
-            block=cls.block,
+        self.student = Student.objects.create(
+            student_id="PES001",
+            full_name="Test Student",
+            email="test@example.com",
+            phone="9876543210",
+            hostel_name="Hostel A",
             room_number="101",
-            room_code="TEST-A-101",
-            capacity=2,
-        )
-        cls.room2 = Room.objects.create(
-            block=cls.block,
-            room_number="102",
-            room_code="TEST-A-102",
-            capacity=2,
         )
 
-    def test_user_defaults_to_student_role(self):
-        user = User.objects.create_user(
-            username="default_role_user",
-            password="test-password-123",
+    def test_staff_can_view_student_records(self):
+        self.client.login(
+            username="admin",
+            password="testpassword123",
         )
-        self.assertEqual(user.role, User.Role.STUDENT)
 
-    def test_student_id_must_be_unique(self):
-        with self.assertRaises(IntegrityError):
-            with transaction.atomic():
-                Student.objects.create(
-                    user=User.objects.create_user(
-                        username="duplicate_student",
-                        password="test-password-123",
-                    ),
-                    student_id="TEST-STU-001",
-                )
+        response = self.client.get(reverse("student_list"))
 
-    def test_room_code_must_be_unique(self):
-        with self.assertRaises(IntegrityError):
-            with transaction.atomic():
-                Room.objects.create(
-                    block=self.block,
-                    room_number="103",
-                    room_code="TEST-A-101",
-                    capacity=2,
-                )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "PES001")
+        self.assertContains(response, "Test Student")
 
-    def test_room_number_must_be_unique_within_block(self):
-        with self.assertRaises(IntegrityError):
-            with transaction.atomic():
-                Room.objects.create(
-                    block=self.block,
-                    room_number="101",
-                    room_code="TEST-A-103",
-                    capacity=2,
-                )
+    def test_non_staff_cannot_view_student_records(self):
+        self.client.login(
+            username="student",
+            password="testpassword123",
+        )
 
-    def test_room_numbers_can_repeat_in_different_blocks(self):
-        other_block = Block.objects.create(
+        response = self.client.get(reverse("student_list"))
+
+        self.assertEqual(response.status_code, 302)
+
+    def test_anonymous_user_cannot_view_student_records(self):
+        response = self.client.get(reverse("student_list"))
+
+        self.assertEqual(response.status_code, 302)
+
+    def test_staff_can_create_student(self):
+        self.client.login(
+            username="admin",
+            password="testpassword123",
+        )
+
+        response = self.client.post(
+            reverse("student_create"),
+            {
+                "student_id": "PES002",
+                "full_name": "New Student",
+                "email": "new@example.com",
+                "phone": "9876543211",
+                "hostel_name": "Hostel B",
+                "room_number": "202",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(
+            Student.objects.filter(student_id="PES002").exists()
+        )
+
+    def test_duplicate_student_id_is_rejected(self):
+        self.client.login(
+            username="admin",
+            password="testpassword123",
+        )
+
+        response = self.client.post(
+            reverse("student_create"),
+            {
+                "student_id": "PES001",
+                "full_name": "Duplicate Student",
+                "email": "duplicate@example.com",
+                "phone": "9876543212",
+                "hostel_name": "Hostel C",
+                "room_number": "303",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Student.objects.count(), 1)
+        self.assertFalse(
+            Student.objects.filter(
+                full_name="Duplicate Student"
+            ).exists()
+        )
+
+    def test_staff_can_update_student(self):
+        self.client.login(
+            username="admin",
+            password="testpassword123",
+        )
+
+        response = self.client.post(
+            reverse(
+                "student_update",
+                args=[self.student.pk],
+            ),
+            {
+                "student_id": "PES001",
+                "full_name": "Updated Student",
+                "email": "updated@example.com",
+                "phone": "9876543210",
+                "hostel_name": "Hostel A",
+                "room_number": "105",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+
+        self.student.refresh_from_db()
+        self.assertEqual(
+            self.student.full_name,
+            "Updated Student",
+        )
+
+    def test_student_record_can_be_retrieved(self):
+        self.client.login(
+            username="admin",
+            password="testpassword123",
+        )
+
+        response = self.client.get(reverse("student_list"))
+
+        self.assertContains(response, self.student.student_id)
+        self.assertContains(response, self.student.full_name)
+
+    def test_passwords_are_stored_using_a_hash(self):
+        user = User.objects.get(username="admin")
+
+        self.assertNotEqual(
+            user.password,
+            "testpassword123",
+        )
+        self.assertTrue(
+            user.check_password("testpassword123")
+        )
+
+
+class HostelOperationsTests(TestCase):
+
+    def setUp(self):
+        self.staff = User.objects.create_user(
+            "warden",
+            password="testpassword123",
+            is_staff=True,
+        )
+
+        self.student_user = User.objects.create_user(
+            "linked",
+            password="testpassword123",
+        )
+
+        self.student = Student.objects.create(
+            user=self.student_user,
+            student_id="PES100",
+            full_name="Linked Student",
+            hostel_name="",
+            room_number="",
+        )
+
+        self.hostel = Hostel.objects.create(
+            name="North Hostel",
+        )
+
+        self.block = Block.objects.create(
             hostel=self.hostel,
-            name="Block B",
+            name="A",
         )
-        room = Room.objects.create(
-            block=other_block,
-            room_number="101",
-            room_code="TEST-B-101",
-            capacity=2,
-        )
-        self.assertEqual(room.room_number, "101")
 
-    def test_student_cannot_have_two_active_allocations(self):
+        self.room = Room.objects.create(
+            block=self.block,
+            number="101",
+            capacity=1,
+        )
+
+    def test_staff_can_allocate_available_room_and_audit_action(self):
+        self.client.login(
+            username="warden",
+            password="testpassword123",
+        )
+
+        response = self.client.post(
+            reverse("allocation_create"),
+            {
+                "student": self.student.pk,
+                "room": self.room.pk,
+            },
+        )
+
+        self.assertRedirects(
+            response,
+            reverse("allocation_list"),
+        )
+
+        self.assertTrue(
+            Allocation.objects.filter(
+                student=self.student,
+                is_active=True,
+            ).exists()
+        )
+
+        self.assertTrue(
+            AuditLog.objects.filter(
+                action="allocated",
+            ).exists()
+        )
+
+    def test_full_room_cannot_receive_second_allocation(self):
+        other = Student.objects.create(
+            student_id="PES101",
+            full_name="Other",
+            hostel_name="",
+            room_number="",
+        )
+
         Allocation.objects.create(
-            student=self.student1,
-            room=self.room1,
-            status=Allocation.Status.ACTIVE,
+            student=self.student,
+            room=self.room,
         )
 
-        with self.assertRaises(IntegrityError):
-            with transaction.atomic():
-                Allocation.objects.create(
-                    student=self.student1,
-                    room=self.room2,
-                    status=Allocation.Status.ACTIVE,
-                )
-
-    def test_student_can_receive_new_allocation_after_completion(self):
-        allocation = Allocation.objects.create(
-            student=self.student1,
-            room=self.room1,
-            status=Allocation.Status.ACTIVE,
+        self.client.login(
+            username="warden",
+            password="testpassword123",
         )
 
-        allocation.status = Allocation.Status.COMPLETED
-        allocation.save()
+        response = self.client.post(
+            reverse("allocation_create"),
+            {
+                "student": other.pk,
+                "room": self.room.pk,
+            },
+        )
 
-        new_allocation = Allocation.objects.create(
-            student=self.student1,
-            room=self.room2,
-            status=Allocation.Status.ACTIVE,
+        self.assertEqual(response.status_code, 200)
+
+        self.assertFalse(
+            Allocation.objects.filter(
+                student=other,
+            ).exists()
+        )
+
+    def test_student_can_submit_and_staff_can_approve_transfer(self):
+        destination = Room.objects.create(
+            block=self.block,
+            number="102",
+            capacity=1,
+        )
+
+        Allocation.objects.create(
+            student=self.student,
+            room=self.room,
+        )
+
+        self.client.login(
+            username="linked",
+            password="testpassword123",
+        )
+
+        response = self.client.post(
+            reverse("transfer_create"),
+            {
+                "requested_room": destination.pk,
+                "reason": "Accessibility",
+            },
+        )
+
+        self.assertRedirects(
+            response,
+            reverse("dashboard"),
+        )
+
+        transfer = TransferRequest.objects.get(
+            student=self.student,
+        )
+
+        self.client.login(
+            username="warden",
+            password="testpassword123",
+        )
+
+        response = self.client.post(
+            reverse(
+                "transfer_review",
+                args=[transfer.pk, "approve"],
+            )
+        )
+
+        self.assertRedirects(
+            response,
+            reverse("transfer_list"),
+        )
+
+        transfer.refresh_from_db()
+
+        self.assertEqual(
+            transfer.status,
+            TransferRequest.Status.APPROVED,
         )
 
         self.assertEqual(
-            new_allocation.active_student_guard,
-            self.student1,
+            self.student.allocations.filter(
+                is_active=True
+            ).get().room,
+            destination,
         )
 
-    def test_room_capacity_must_be_at_least_one(self):
-        with self.assertRaises(IntegrityError):
-            with transaction.atomic():
-                Room.objects.create(
-                    block=self.block,
-                    room_number="104",
-                    room_code="TEST-A-104",
-                    capacity=0,
-                )
 
+class StudentCheckInOutTests(TestCase):
 
-class AllocationServiceTests(TestCase):
-    @classmethod
-    def setUpTestData(cls):
-        cls.user1 = User.objects.create_user(
-            username="service_student_one",
-            password="test-password-123",
-        )
-        cls.user2 = User.objects.create_user(
-            username="service_student_two",
-            password="test-password-123",
+    def setUp(self):
+        self.warden = User.objects.create_user(
+            username="warden_test",
+            password="testpassword123",
+            is_staff=True,
         )
 
-        cls.student1 = Student.objects.create(
-            user=cls.user1,
-            student_id="SERVICE-STU-001",
-            department="Computer Science",
-            year_of_study=2,
-        )
-        cls.student2 = Student.objects.create(
-            user=cls.user2,
-            student_id="SERVICE-STU-002",
-            department="Information Science",
-            year_of_study=2,
+        self.normal_user = User.objects.create_user(
+            username="student_test",
+            password="testpassword123",
         )
 
-        cls.hostel = Hostel.objects.create(
-            name="Service Test Hostel",
-            address="Service Test Address",
+        self.hostel = Hostel.objects.create(
+            name="Check-in Hostel",
         )
-        cls.block = Block.objects.create(
-            hostel=cls.hostel,
-            name="Block A",
+
+        self.block = Block.objects.create(
+            hostel=self.hostel,
+            name="A",
         )
-        cls.room1 = Room.objects.create(
-            block=cls.block,
+
+        self.room = Room.objects.create(
+            block=self.block,
+            number="101",
+            capacity=2,
+        )
+
+        self.student = Student.objects.create(
+            student_id="PES200",
+            full_name="Check In Student",
+            email="checkin@example.com",
+            phone="9876543210",
+            hostel_name="Check-in Hostel",
             room_number="101",
-            room_code="SERVICE-A-101",
-            capacity=2,
-        )
-        cls.room2 = Room.objects.create(
-            block=cls.block,
-            room_number="102",
-            room_code="SERVICE-A-102",
-            capacity=2,
         )
 
-    def test_allocate_student_when_room_has_space(self):
-        allocation = allocate_student(
-            student_id=self.student1.pk,
-            room_id=self.room1.pk,
+        self.allocation = Allocation.objects.create(
+            student=self.student,
+            room=self.room,
+            is_active=True,
         )
 
-        self.assertEqual(allocation.student, self.student1)
-        self.assertEqual(allocation.room, self.room1)
+    def test_check_out_updates_stay_status_and_occupancy(self):
+        self.client.login(
+            username="warden_test",
+            password="testpassword123",
+        )
+
+        response = self.client.post(
+            reverse(
+                "check_out",
+                args=[self.allocation.pk],
+            )
+        )
+
+        self.assertRedirects(
+            response,
+            reverse("allocation_list"),
+        )
+
+        self.allocation.refresh_from_db()
+
+        self.assertFalse(self.allocation.is_active)
+        self.assertIsNotNone(self.allocation.checked_out_at)
+        self.assertEqual(self.room.occupied_count, 0)
+
+        self.student.refresh_from_db()
+
+        self.assertEqual(self.student.hostel_name, "")
+        self.assertEqual(self.student.room_number, "")
+
+        self.assertTrue(
+            AuditLog.objects.filter(
+                action="checked_out",
+                object_id=str(self.allocation.pk),
+            ).exists()
+        )
+
+    def test_check_in_reactivates_previous_allocation(self):
+        self.allocation.is_active = False
+        self.allocation.checked_out_at = timezone.now()
+        self.allocation.save(
+            update_fields=["is_active", "checked_out_at"]
+        )
+
+        self.client.login(
+            username="warden_test",
+            password="testpassword123",
+        )
+
+        response = self.client.post(
+            reverse(
+                "check_in",
+                args=[self.allocation.pk],
+            )
+        )
+
+        self.assertRedirects(
+            response,
+            reverse("allocation_list"),
+        )
+
+        self.allocation.refresh_from_db()
+
+        self.assertTrue(self.allocation.is_active)
+        self.assertIsNone(self.allocation.checked_out_at)
+        self.assertEqual(self.room.available_spaces, 1)
+
+        self.student.refresh_from_db()
+
         self.assertEqual(
-            allocation.status,
-            Allocation.Status.ACTIVE,
+            self.student.hostel_name,
+            self.hostel.name,
+        )
+        self.assertEqual(
+            self.student.room_number,
+            self.room.number,
         )
 
-    def test_full_room_rejects_new_allocation(self):
-        self.room1.capacity = 1
-        self.room1.save(update_fields=["capacity"])
+        self.assertTrue(
+            AuditLog.objects.filter(
+                action="checked_in",
+                object_id=str(self.allocation.pk),
+            ).exists()
+        )
+
+    def test_non_staff_cannot_check_out_student(self):
+        self.client.login(
+            username="student_test",
+            password="testpassword123",
+        )
+
+        response = self.client.post(
+            reverse(
+                "check_out",
+                args=[self.allocation.pk],
+            )
+        )
+
+        self.assertEqual(response.status_code, 302)
+
+        self.allocation.refresh_from_db()
+
+        self.assertTrue(self.allocation.is_active)
+        self.assertIsNone(self.allocation.checked_out_at)
+
+    def test_non_staff_cannot_check_in_student(self):
+        self.allocation.is_active = False
+        self.allocation.checked_out_at = timezone.now()
+        self.allocation.save(
+            update_fields=["is_active", "checked_out_at"]
+        )
+
+        self.client.login(
+            username="student_test",
+            password="testpassword123",
+        )
+
+        response = self.client.post(
+            reverse(
+                "check_in",
+                args=[self.allocation.pk],
+            )
+        )
+
+        self.assertEqual(response.status_code, 302)
+
+        self.allocation.refresh_from_db()
+
+        self.assertFalse(self.allocation.is_active)
+
+    def test_duplicate_check_out_does_not_change_timestamp(self):
+        self.client.login(
+            username="warden_test",
+            password="testpassword123",
+        )
+
+        self.client.post(
+            reverse(
+                "check_out",
+                args=[self.allocation.pk],
+            )
+        )
+
+        self.allocation.refresh_from_db()
+        original_checkout_time = self.allocation.checked_out_at
+
+        self.client.post(
+            reverse(
+                "check_out",
+                args=[self.allocation.pk],
+            )
+        )
+
+        self.allocation.refresh_from_db()
+
+        self.assertEqual(
+            self.allocation.checked_out_at,
+            original_checkout_time,
+        )
+
+    def test_check_in_cannot_exceed_room_capacity(self):
+        self.room.capacity = 1
+        self.room.save()
+
+        other_student = Student.objects.create(
+            student_id="PES201",
+            full_name="Another Student",
+            hostel_name="Check-in Hostel",
+            room_number="101",
+        )
 
         Allocation.objects.create(
-            student=self.student1,
-            room=self.room1,
-            status=Allocation.Status.ACTIVE,
+            student=other_student,
+            room=self.room,
+            is_active=True,
+        )
+
+        self.allocation.is_active = False
+        self.allocation.checked_out_at = timezone.now()
+        self.allocation.save(
+            update_fields=["is_active", "checked_out_at"]
+        )
+
+        self.client.login(
+            username="warden_test",
+            password="testpassword123",
+        )
+
+        response = self.client.post(
+            reverse(
+                "check_in",
+                args=[self.allocation.pk],
+            )
+        )
+
+        self.assertRedirects(
+            response,
+            reverse("allocation_list"),
+        )
+
+        self.allocation.refresh_from_db()
+
+        self.assertFalse(self.allocation.is_active)
+        self.assertIsNotNone(self.allocation.checked_out_at)
+
+    def test_anonymous_user_cannot_check_out_student(self):
+        response = self.client.post(
+            reverse(
+                "check_out",
+                args=[self.allocation.pk],
+            )
+        )
+
+        self.assertEqual(response.status_code, 302)
+
+        self.allocation.refresh_from_db()
+
+        self.assertTrue(self.allocation.is_active)
+
+
+class AllocationSafetyTests(TestCase):
+    def setUp(self):
+        self.hostel = Hostel.objects.create(name="Allocation Safety Hostel")
+        self.block = Block.objects.create(hostel=self.hostel, name="A")
+        self.room = Room.objects.create(
+            block=self.block,
+            number="301",
+            capacity=1,
+        )
+        self.student_one = Student.objects.create(
+            student_id="SAFE001",
+            full_name="Safety One",
+            hostel_name="",
+            room_number="",
+        )
+        self.student_two = Student.objects.create(
+            student_id="SAFE002",
+            full_name="Safety Two",
+            hostel_name="",
+            room_number="",
+        )
+
+    def test_service_rejects_allocation_when_room_is_full(self):
+        Allocation.objects.create(
+            student=self.student_one,
+            room=self.room,
         )
 
         with self.assertRaisesMessage(
             ValidationError,
             "This room is already at full capacity.",
         ):
-            allocate_student(
-                student_id=self.student2.pk,
-                room_id=self.room1.pk,
-            )
+            allocate_student(self.student_two.pk, self.room.pk)
 
-    def test_service_rejects_student_with_active_allocation(self):
+    def test_service_rejects_second_active_allocation_for_student(self):
         Allocation.objects.create(
-            student=self.student1,
-            room=self.room1,
-            status=Allocation.Status.ACTIVE,
+            student=self.student_one,
+            room=self.room,
+        )
+        other_room = Room.objects.create(
+            block=self.block,
+            number="302",
+            capacity=1,
         )
 
         with self.assertRaisesMessage(
             ValidationError,
             "This student already has an active allocation.",
         ):
-            allocate_student(
-                student_id=self.student1.pk,
-                room_id=self.room2.pk,
-            )
+            allocate_student(self.student_one.pk, other_room.pk)
 
-    def test_service_rejects_nonexistent_room(self):
-        with self.assertRaisesMessage(
-            ValidationError,
-            "The requested room does not exist.",
-        ):
-            allocate_student(
-                student_id=self.student1.pk,
-                room_id=999999,
-            )
+    def test_active_allocation_guard_is_cleared_on_partial_update(self):
+        allocation = Allocation.objects.create(
+            student=self.student_one,
+            room=self.room,
+        )
+        self.assertEqual(
+            allocation.active_student_guard_id,
+            self.student_one.pk,
+        )
 
-    def test_service_rejects_nonexistent_student(self):
-        with self.assertRaisesMessage(
-            ValidationError,
-            "The requested student does not exist.",
-        ):
-            allocate_student(
-                student_id=999999,
-                room_id=self.room1.pk,
-            )
+        allocation.is_active = False
+        allocation.save(update_fields=["is_active"])
+        allocation.refresh_from_db()
+        self.assertIsNone(allocation.active_student_guard_id)
+
+        allocation.is_active = True
+        allocation.save(update_fields=["is_active"])
+        allocation.refresh_from_db()
+        self.assertEqual(
+            allocation.active_student_guard_id,
+            self.student_one.pk,
+        )
+
+    def test_database_rejects_duplicate_active_allocation(self):
+        Allocation.objects.create(
+            student=self.student_one,
+            room=self.room,
+        )
+
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                Allocation.objects.create(
+                    student=self.student_one,
+                    room=Room.objects.create(
+                        block=self.block,
+                        number="303",
+                        capacity=1,
+                    ),
+                )
+
+
+class DemoSeedCommandTests(TestCase):
+    def test_seed_command_is_repeatable_and_allocates_within_capacity(self):
+        call_command("seed_demo", stdout=StringIO())
+        call_command("seed_demo", stdout=StringIO())
+
+        self.assertEqual(Hostel.objects.count(), 1)
+        self.assertEqual(Block.objects.count(), 2)
+        self.assertEqual(Room.objects.count(), 3)
+        self.assertEqual(Student.objects.count(), 2)
+        self.assertEqual(
+            Allocation.objects.filter(is_active=True).count(),
+            1,
+        )
+
+        for room in Room.objects.all():
+            self.assertLessEqual(room.occupied_count, room.capacity)
