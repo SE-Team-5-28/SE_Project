@@ -28,4 +28,17 @@ urlpatterns = [
     path(
         "students/<int:pk>/edit/", views.student_update, name="student_update"
     ),
+    path("hostels/", views.hostel_list, name="hostel_list"),
+    path("hostels/add/", views.hostel_create, name="hostel_create"),
+    path("blocks/add/", views.block_create, name="block_create"),
+    path("rooms/add/", views.room_create, name="room_create"),
+    path("allocations/", views.allocation_list, name="allocation_list"),
+    path("allocations/add/", views.allocation_create, name="allocation_create"),
+    path("transfers/", views.transfer_list, name="transfer_list"),
+    path("transfers/add/", views.transfer_create, name="transfer_create"),
+    path(
+        "transfers/<int:pk>/<str:decision>/",
+        views.transfer_review,
+        name="transfer_review",
+    ),
 ]

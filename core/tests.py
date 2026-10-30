@@ -3,7 +3,7 @@ from django.test import TestCase
 from django.urls import reverse
 from django.contrib.auth.models import User
 
-from .models import Student
+from .models import Allocation, AuditLog, Block, Hostel, Room, Student, TransferRequest
 
 
 class StudentRecordTests(TestCase):
@@ -118,3 +118,50 @@ class StudentRecordTests(TestCase):
 
         self.assertContains(response, self.student.student_id)
         self.assertContains(response, self.student.full_name)
+
+    def test_passwords_are_stored_using_a_hash(self):
+        user = User.objects.get(username="admin")
+        self.assertNotEqual(user.password, "testpassword123")
+        self.assertTrue(user.check_password("testpassword123"))
+
+
+class HostelOperationsTests(TestCase):
+    def setUp(self):
+        self.staff = User.objects.create_user("warden", password="testpassword123", is_staff=True)
+        self.student_user = User.objects.create_user("linked", password="testpassword123")
+        self.student = Student.objects.create(
+            user=self.student_user, student_id="PES100", full_name="Linked Student",
+            hostel_name="", room_number="",
+        )
+        self.hostel = Hostel.objects.create(name="North Hostel")
+        self.block = Block.objects.create(hostel=self.hostel, name="A")
+        self.room = Room.objects.create(block=self.block, number="101", capacity=1)
+
+    def test_staff_can_allocate_available_room_and_audit_action(self):
+        self.client.login(username="warden", password="testpassword123")
+        response = self.client.post(reverse("allocation_create"), {"student": self.student.pk, "room": self.room.pk})
+        self.assertRedirects(response, reverse("allocation_list"))
+        self.assertTrue(Allocation.objects.filter(student=self.student, is_active=True).exists())
+        self.assertTrue(AuditLog.objects.filter(action="allocated").exists())
+
+    def test_full_room_cannot_receive_second_allocation(self):
+        other = Student.objects.create(student_id="PES101", full_name="Other", hostel_name="", room_number="")
+        Allocation.objects.create(student=self.student, room=self.room)
+        self.client.login(username="warden", password="testpassword123")
+        response = self.client.post(reverse("allocation_create"), {"student": other.pk, "room": self.room.pk})
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Allocation.objects.filter(student=other).exists())
+
+    def test_student_can_submit_and_staff_can_approve_transfer(self):
+        destination = Room.objects.create(block=self.block, number="102", capacity=1)
+        Allocation.objects.create(student=self.student, room=self.room)
+        self.client.login(username="linked", password="testpassword123")
+        response = self.client.post(reverse("transfer_create"), {"requested_room": destination.pk, "reason": "Accessibility"})
+        self.assertRedirects(response, reverse("dashboard"))
+        transfer = TransferRequest.objects.get(student=self.student)
+        self.client.login(username="warden", password="testpassword123")
+        response = self.client.post(reverse("transfer_review", args=[transfer.pk, "approve"]))
+        self.assertRedirects(response, reverse("transfer_list"))
+        transfer.refresh_from_db()
+        self.assertEqual(transfer.status, TransferRequest.Status.APPROVED)
+        self.assertEqual(self.student.allocations.filter(is_active=True).get().room, destination)
