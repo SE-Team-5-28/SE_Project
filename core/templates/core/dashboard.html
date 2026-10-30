@@ -1,40 +1,37 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Hostel Management - Dashboard</title>
-</head>
-<body>
-    <h1>Hostel Management System</h1>
+{% extends 'core/base.html' %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<h1>Welcome, {{ request.user.username }}</h1>
+<p>Your role: {{ role_label }}</p>
 
-    <h2>Dashboard</h2>
+<div class="grid">
+    <div class="card"><strong>{{ student_count }}</strong><span>Students</span></div>
+    <div class="card"><strong>{{ hostel_count }}</strong><span>Hostels</span></div>
+    <div class="card"><strong>{{ room_count }}</strong><span>Rooms</span></div>
+    <div class="card"><strong>{{ pending_transfers }}</strong><span>Pending transfers</span></div>
+</div>
 
-    <p>Welcome, {{ request.user.username }}.</p>
-    <p>Your role: {{ request.user.get_role_display }}</p>
+{% if user_role == 'STUDENT' %}
+    <section class="card">
+        <h2>Student access</h2>
+        <p><a href="{% url 'student_dashboard' %}">Student Dashboard</a></p>
+        <p><a href="{% url 'transfer_create' %}">Request a room transfer</a></p>
+    </section>
+{% elif user_role == 'WARDEN' %}
+    <section class="card">
+        <h2>Warden access</h2>
+        <p><a href="{% url 'warden_dashboard' %}">Warden Dashboard</a></p>
+    </section>
+{% elif user_role == 'HOSTEL_ADMIN' or user_role == 'SYSTEM_ADMIN' %}
+    <section class="card">
+        <h2>Administrator access</h2>
+        <p><a href="{% url 'administrator_dashboard' %}">Administrator Dashboard</a></p>
+    </section>
+{% endif %}
 
-    {% if request.user.role == "STUDENT" %}
-        <section>
-            <h3>Student Navigation</h3>
-            <p><a href="{% url 'student_dashboard' %}">Student Dashboard</a></p>
-        </section>
-
-    {% elif request.user.role == "WARDEN" %}
-        <section>
-            <h3>Warden Navigation</h3>
-            <p><a href="{% url 'warden_dashboard' %}">Warden Dashboard</a></p>
-        </section>
-
-    {% elif request.user.role == "HOSTEL_ADMIN" or request.user.role == "SYSTEM_ADMIN" %}
-        <section>
-            <h3>Administrator Navigation</h3>
-            <p><a href="{% url 'administrator_dashboard' %}">Administrator Dashboard</a></p>
-        </section>
-    {% endif %}
-
-    <form method="post" action="{% url 'logout' %}">
-        {% csrf_token %}
-        <button type="submit">Log out</button>
-    </form>
-</body>
-</html>
+{% if is_staff_role %}
+    <p>Use the navigation to manage records and review requests.</p>
+{% else %}
+    <p>Submit a transfer request when you need a room change.</p>
+{% endif %}
+{% endblock %}

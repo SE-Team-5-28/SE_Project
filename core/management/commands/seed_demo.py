@@ -1,4 +1,5 @@
 from django.core.management.base import BaseCommand
+from django.contrib.auth import get_user_model
 from django.db import transaction
 
 from core.models import (
@@ -7,7 +8,7 @@ from core.models import (
     Hostel,
     Room,
     Student,
-    User,
+    set_user_role,
 )
 
 
@@ -85,24 +86,18 @@ class Command(BaseCommand):
         ]
 
         created_users = {}
+        user_model = get_user_model()
         for details in demo_users:
             username = details["username"]
-            user, _ = User.objects.get_or_create(
+            user, _ = user_model.objects.get_or_create(
                 username=username,
                 defaults={
-                    "role": details["role"],
                     "email": details["email"],
                     "is_active": True,
                 },
             )
+            set_user_role(user, details["role"])
             created_users[username] = user
-
-        # Ensure existing demo accounts retain their intended roles.
-        for details in demo_users:
-            user = created_users[details["username"]]
-            if user.role != details["role"]:
-                user.role = details["role"]
-                user.save(update_fields=["role"])
 
         # Create student profiles.
         student1, _ = Student.objects.get_or_create(

@@ -2,6 +2,8 @@ from functools import wraps
 
 from django.core.exceptions import PermissionDenied
 
+from .models import get_user_role
+
 
 def role_required(*allowed_roles):
     """Restrict a view to authenticated users with an allowed role."""
@@ -18,7 +20,7 @@ def role_required(*allowed_roles):
                     login_url="login",
                 )
 
-            if request.user.role not in allowed_roles:
+            if get_user_role(request.user) not in allowed_roles:
                 raise PermissionDenied(
                     "You do not have permission to access this page."
                 )

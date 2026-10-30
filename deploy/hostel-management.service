@@ -1,0 +1,14 @@
+[Unit]
+Description=Hostel Management Django application
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/srv/hostel-management
+EnvironmentFile=/srv/hostel-management/.env
+ExecStart=/srv/hostel-management/.venv/bin/gunicorn config.wsgi:application --bind 127.0.0.1:8000 --workers 3
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

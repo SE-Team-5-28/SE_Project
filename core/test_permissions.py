@@ -1,7 +1,14 @@
 from django.test import TestCase
 from django.urls import reverse
 
-from core.models import User
+from core.models import (
+    Block,
+    Hostel,
+    Room,
+    Student,
+    TransferRequest,
+    User,
+)
 
 
 class RoleBasedAccessTests(TestCase):
@@ -133,3 +140,44 @@ class RoleBasedAccessTests(TestCase):
         self.assertContains(response, reverse("administrator_dashboard"))
         self.assertNotContains(response, reverse("student_dashboard"))
         self.assertNotContains(response, reverse("warden_dashboard"))
+
+    def test_dashboard_displays_current_base_counts(self):
+        hostel = Hostel.objects.create(name="Dashboard Hostel")
+        block = Block.objects.create(hostel=hostel, name="A")
+        room = Room.objects.create(block=block, number="101", capacity=1)
+        student = Student.objects.create(
+            user=self.student,
+            student_id="DASH-STU-001",
+            full_name="Dashboard Student",
+            hostel_name=hostel.name,
+            room_number=room.number,
+        )
+        TransferRequest.objects.create(
+            student=student,
+            requested_room=room,
+            reason="Dashboard count test",
+        )
+
+        self.client.force_login(self.hostel_admin)
+        response = self.client.get(reverse("dashboard"))
+
+        self.assertContains(
+            response,
+            "<strong>1</strong><span>Students</span>",
+            html=True,
+        )
+        self.assertContains(
+            response,
+            "<strong>1</strong><span>Hostels</span>",
+            html=True,
+        )
+        self.assertContains(
+            response,
+            "<strong>1</strong><span>Rooms</span>",
+            html=True,
+        )
+        self.assertContains(
+            response,
+            "<strong>1</strong><span>Pending transfers</span>",
+            html=True,
+        )
