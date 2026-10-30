@@ -5,14 +5,7 @@ from .models import Allocation, Block, Hostel, Room, Student, TransferRequest
 class StudentForm(forms.ModelForm):
     class Meta:
         model = Student
-        fields = [
-            "student_id",
-            "full_name",
-            "email",
-            "phone",
-            "hostel_name",
-            "room_number",
-        ]
+        fields = ['user', 'student_id', 'phone', 'department', 'year_of_study']
 
 
 class HostelForm(forms.ModelForm):
