@@ -1,14 +1,13 @@
 import uuid
 
 from django.conf import settings
-from django.contrib.auth.models import AbstractUser
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import Q
 
 
-class User(AbstractUser):
-    """HMS user with a role."""
+class UserRole(models.Model):
+    """Application role assigned to a built-in Django user."""
 
     class Role(models.TextChoices):
         STUDENT = "STUDENT", "Student"
@@ -16,6 +15,11 @@ class User(AbstractUser):
         HOSTEL_ADMIN = "HOSTEL_ADMIN", "Hostel Administrator"
         SYSTEM_ADMIN = "SYSTEM_ADMIN", "System Administrator"
 
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="role_profile",
+    )
     role = models.CharField(
         max_length=20,
         choices=Role.choices,
@@ -23,7 +27,7 @@ class User(AbstractUser):
     )
 
     def __str__(self):
-        return f"{self.username} ({self.get_role_display()})"
+        return f"{self.user.username} ({self.get_role_display()})"
 
 
 class Student(models.Model):
@@ -31,11 +35,17 @@ class Student(models.Model):
 
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
-        on_delete=models.PROTECT,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name="student_profile",
     )
     student_id = models.CharField(max_length=30, unique=True)
+    full_name = models.CharField(max_length=150, blank=True)
+    email = models.EmailField(blank=True)
     phone = models.CharField(max_length=20, blank=True)
+    hostel_name = models.CharField(max_length=100, blank=True)
+    room_number = models.CharField(max_length=20, blank=True)
     department = models.CharField(max_length=100, blank=True)
     year_of_study = models.PositiveSmallIntegerField(
         null=True,
@@ -43,6 +53,10 @@ class Student(models.Model):
         validators=[MinValueValidator(1)],
     )
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["student_id"]
 
     def __str__(self):
         return self.student_id
@@ -53,7 +67,17 @@ class Hostel(models.Model):
 
     name = models.CharField(max_length=100, unique=True)
     address = models.TextField(blank=True)
+    warden = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="managed_hostels",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["name"]
 
     def __str__(self):
         return self.name
@@ -71,6 +95,7 @@ class Block(models.Model):
     description = models.TextField(blank=True)
 
     class Meta:
+        ordering = ["hostel__name", "name"]
         constraints = [
             models.UniqueConstraint(
                 fields=["hostel", "name"],
@@ -90,7 +115,7 @@ class Room(models.Model):
         on_delete=models.PROTECT,
         related_name="rooms",
     )
-    room_number = models.CharField(max_length=20)
+    number = models.CharField(max_length=20)
     room_code = models.CharField(max_length=50, unique=True)
     capacity = models.PositiveIntegerField(
         validators=[MinValueValidator(1)],
@@ -98,9 +123,10 @@ class Room(models.Model):
     description = models.TextField(blank=True)
 
     class Meta:
+        ordering = ["block__hostel__name", "block__name", "number"]
         constraints = [
             models.UniqueConstraint(
-                fields=["block", "room_number"],
+                fields=["block", "number"],
                 name="unique_room_number_per_block",
             ),
             models.CheckConstraint(
@@ -110,7 +136,23 @@ class Room(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.block} - Room {self.room_number}"
+        return f"{self.block} - Room {self.number}"
+
+    @property
+    def room_number(self):
+        return self.number
+
+    @room_number.setter
+    def room_number(self, value):
+        self.number = value
+
+    @property
+    def occupied_count(self):
+        return self.allocations.filter(status=Allocation.Status.ACTIVE).count()
+
+    @property
+    def available_spaces(self):
+        return max(self.capacity - self.occupied_count, 0)
 
 
 class Allocation(models.Model):
@@ -132,6 +174,9 @@ class Allocation(models.Model):
         related_name="allocations",
     )
     allocation_date = models.DateField(auto_now_add=True)
+    allocated_at = models.DateTimeField(auto_now_add=True)
+    checked_out_at = models.DateTimeField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
     status = models.CharField(
         max_length=12,
         choices=Status.choices,
@@ -152,6 +197,14 @@ class Allocation(models.Model):
     )
 
     class Meta:
+        ordering = ["room", "student__student_id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["student"],
+                condition=Q(is_active=True),
+                name="one_active_allocation_per_student",
+            ),
+        ]
         indexes = [
             models.Index(
                 fields=["room", "status"],
@@ -162,8 +215,17 @@ class Allocation(models.Model):
     def save(self, *args, **kwargs):
         if self.status == self.Status.ACTIVE:
             self.active_student_guard = self.student
+            self.is_active = True
         else:
             self.active_student_guard = None
+            self.is_active = False
+
+        update_fields = kwargs.get("update_fields")
+        if update_fields is not None:
+            kwargs["update_fields"] = set(update_fields) | {
+                "active_student_guard",
+                "is_active",
+            }
 
         super().save(*args, **kwargs)
 
@@ -197,15 +259,19 @@ class TransferRequest(models.Model):
         choices=Status.choices,
         default=Status.PENDING,
     )
-    decision_by = models.ForeignKey(
+    reviewed_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         null=True,
         blank=True,
         on_delete=models.SET_NULL,
-        related_name="transfer_decisions",
+        related_name="reviewed_transfer_requests",
     )
     created_at = models.DateTimeField(auto_now_add=True)
-    decided_at = models.DateTimeField(null=True, blank=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    review_note = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
 
     def __str__(self):
         return f"Transfer #{self.pk} - {self.status}"
@@ -248,21 +314,21 @@ class Complaint(models.Model):
 class AuditLog(models.Model):
     """Records important actions performed in the HMS."""
 
-    user = models.ForeignKey(
+    actor = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         null=True,
         blank=True,
         on_delete=models.SET_NULL,
-        related_name="audit_logs",
+        related_name="audit_events",
     )
     action = models.CharField(max_length=100)
-    entity_type = models.CharField(max_length=100)
-    entity_id = models.CharField(max_length=100, blank=True)
+    model_name = models.CharField(max_length=100)
+    object_id = models.CharField(max_length=50, blank=True)
     details = models.JSONField(default=dict, blank=True)
-    timestamp = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ["-timestamp"]
+        ordering = ["-created_at"]
 
     def __str__(self):
-        return f"{self.action} - {self.timestamp}"
+        return f"{self.action} - {self.created_at}"

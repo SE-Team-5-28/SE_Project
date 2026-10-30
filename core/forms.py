@@ -5,7 +5,17 @@ from .models import Allocation, Block, Hostel, Room, Student, TransferRequest
 class StudentForm(forms.ModelForm):
     class Meta:
         model = Student
-        fields = ['user', 'student_id', 'phone', 'department', 'year_of_study']
+        fields = [
+            "user",
+            "student_id",
+            "full_name",
+            "email",
+            "phone",
+            "hostel_name",
+            "room_number",
+            "department",
+            "year_of_study",
+        ]
 
 
 class HostelForm(forms.ModelForm):
@@ -23,7 +33,7 @@ class BlockForm(forms.ModelForm):
 class RoomForm(forms.ModelForm):
     class Meta:
         model = Room
-        fields = ["block", "room_number", "room_code", "capacity", "description"]
+        fields = ["block", "number", "room_code", "capacity", "description"]
 
 
 class AllocationForm(forms.ModelForm):
@@ -58,9 +68,12 @@ class TransferRequestForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.student = student
         self.fields["requested_room"].queryset = Room.objects.all()
+        self.fields["requested_room"].required = True
 
     def clean_requested_room(self):
         room = self.cleaned_data["requested_room"]
+        if room is None:
+            return room
         
         # Check if the requested room is full
         occupied = Allocation.objects.filter(room=room, status=Allocation.Status.ACTIVE).count()
