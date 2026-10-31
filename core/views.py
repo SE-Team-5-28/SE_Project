@@ -21,13 +21,22 @@ from .models import (
     Room,
     Student,
     TransferRequest,
+    User,
+    get_user_role,
 )
+from .permissions import role_required
 
 
 def staff_required(view_func):
-    return user_passes_test(lambda user: user.is_staff, login_url="login")(
-        view_func
-    )
+    allowed_roles = {
+        User.Role.WARDEN,
+        User.Role.HOSTEL_ADMIN,
+        User.Role.SYSTEM_ADMIN,
+    }
+    return user_passes_test(
+        lambda user: get_user_role(user) in allowed_roles,
+        login_url="login",
+    )(view_func)
 
 
 def audit(action, instance, request, details=None):
@@ -51,6 +60,33 @@ def dashboard(request):
         ).count(),
     }
     return render(request, "core/dashboard.html", context)
+
+
+@role_required(User.Role.STUDENT)
+def student_dashboard(request):
+    return render(
+        request,
+        "core/role_dashboard.html",
+        {"page_title": "Student Dashboard"},
+    )
+
+
+@role_required(User.Role.WARDEN)
+def warden_dashboard(request):
+    return render(
+        request,
+        "core/role_dashboard.html",
+        {"page_title": "Warden Dashboard"},
+    )
+
+
+@role_required(User.Role.HOSTEL_ADMIN, User.Role.SYSTEM_ADMIN)
+def administrator_dashboard(request):
+    return render(
+        request,
+        "core/role_dashboard.html",
+        {"page_title": "Administrator Dashboard"},
+    )
 
 
 @login_required
@@ -295,7 +331,7 @@ def transfer_list(request):
     )
 
 
-@login_required
+@role_required(User.Role.STUDENT)
 def transfer_create(request):
     try:
         student = request.user.student_profile

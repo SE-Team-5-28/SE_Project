@@ -1,6 +1,7 @@
 import uuid
 
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import Q
@@ -28,6 +29,69 @@ class UserRole(models.Model):
 
     def __str__(self):
         return f"{self.user.username} ({self.get_role_display()})"
+
+
+class _RoleAwareUserManager:
+    def create_user(self, username, email=None, password=None, **extra_fields):
+        role = extra_fields.pop("role", None)
+        user = get_user_model()._default_manager.create_user(
+            username=username,
+            email=email,
+            password=password,
+            **extra_fields,
+        )
+        if role is None:
+            role = (
+                UserRole.Role.WARDEN
+                if user.is_staff
+                else UserRole.Role.STUDENT
+            )
+        set_user_role(user, role)
+        user.role = role
+        return user
+
+    def create_superuser(self, username, email=None, password=None, **extra_fields):
+        extra_fields.pop("role", None)
+        user = get_user_model()._default_manager.create_superuser(
+            username=username,
+            email=email,
+            password=password,
+            **extra_fields,
+        )
+        set_user_role(user, UserRole.Role.SYSTEM_ADMIN)
+        user.role = UserRole.Role.SYSTEM_ADMIN
+        return user
+
+    def __getattr__(self, name):
+        return getattr(get_user_model()._default_manager, name)
+
+
+class User:
+    """Compatibility facade for creating users with an HMS role."""
+
+    Role = UserRole.Role
+    objects = _RoleAwareUserManager()
+
+
+def set_user_role(user, role):
+    if role not in UserRole.Role.values:
+        raise ValueError(f"Unknown user role: {role}")
+    UserRole.objects.update_or_create(user=user, defaults={"role": role})
+
+
+def get_user_role(user):
+    if not user.is_authenticated:
+        return None
+
+    role_profile = getattr(user, "role_profile", None)
+    if role_profile is not None:
+        return role_profile.role
+
+    return (
+        UserRole.Role.WARDEN
+        if user.is_staff
+        else UserRole.Role.STUDENT
+    )
 
 
 class Student(models.Model):
