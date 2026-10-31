@@ -24,6 +24,50 @@ from .services import allocate_student
 User = get_user_model()
 
 
+class AuthenticationWorkflowTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="login_student",
+            password="testpassword123",
+        )
+
+    def test_user_can_log_in_with_valid_credentials(self):
+        response = self.client.post(
+            reverse("login"),
+            {"username": "login_student", "password": "testpassword123"},
+        )
+
+        self.assertRedirects(response, reverse("dashboard"))
+        self.assertEqual(
+            self.client.get(reverse("dashboard")).status_code,
+            200,
+        )
+
+    def test_user_cannot_log_in_with_invalid_password(self):
+        response = self.client.post(
+            reverse("login"),
+            {"username": "login_student", "password": "wrong-password"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Invalid username or password")
+        self.assertRedirects(
+            self.client.get(reverse("dashboard")),
+            f"{reverse('login')}?next={reverse('dashboard')}",
+        )
+
+    def test_user_can_log_out(self):
+        self.client.force_login(self.user)
+
+        response = self.client.post(reverse("logout"))
+
+        self.assertRedirects(response, reverse("login"))
+        self.assertRedirects(
+            self.client.get(reverse("dashboard")),
+            f"{reverse('login')}?next={reverse('dashboard')}",
+        )
+
+
 class StudentRecordTests(TestCase):
     @classmethod
     def setUpTestData(cls):
@@ -143,6 +187,31 @@ class HostelOperationsTests(TestCase):
             capacity=1,
         )
 
+    def test_staff_can_create_room_and_audit_action(self):
+        self.client.force_login(self.staff)
+
+        response = self.client.post(
+            reverse("room_create"),
+            {
+                "block": self.block.pk,
+                "number": "102",
+                "room_code": "NORTH-A-102",
+                "capacity": 2,
+            },
+        )
+
+        self.assertRedirects(response, reverse("hostel_list"))
+        room = Room.objects.get(room_code="NORTH-A-102")
+        self.assertEqual(room.block, self.block)
+        self.assertEqual(room.capacity, 2)
+        self.assertTrue(
+            AuditLog.objects.filter(
+                action="created",
+                model_name="Room",
+                object_id=str(room.pk),
+            ).exists()
+        )
+
     def test_staff_can_allocate_available_room_and_audit_action(self):
         self.client.force_login(self.staff)
         response = self.client.post(
@@ -173,6 +242,34 @@ class HostelOperationsTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertFalse(Allocation.objects.filter(student=other).exists())
+
+    def test_student_cannot_be_allocated_to_a_second_room(self):
+        other_room = Room.objects.create(
+            block=self.block,
+            number="102",
+            room_code="NORTH-A-102",
+            capacity=1,
+        )
+        Allocation.objects.create(student=self.student, room=self.room)
+
+        self.client.force_login(self.staff)
+        response = self.client.post(
+            reverse("allocation_create"),
+            {"student": self.student.pk, "room": other_room.pk},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            Allocation.objects.filter(
+                student=self.student,
+                status=Allocation.Status.ACTIVE,
+            ).count(),
+            1,
+        )
+        self.assertEqual(
+            self.student.allocations.get(status=Allocation.Status.ACTIVE).room,
+            self.room,
+        )
 
     def test_student_can_submit_and_staff_can_approve_transfer(self):
         destination = Room.objects.create(

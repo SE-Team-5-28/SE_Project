@@ -20,3 +20,14 @@ The repository's original SRS describes MySQL as the proposed database. SQLite i
 python manage.py test
 python manage.py check --deploy
 ```
+
+## Sprint 1 test coverage (#34)
+
+| Test plan cases | Coverage |
+| --- | --- |
+| TC-Auth-01–03 | `AuthenticationWorkflowTests`: valid login, invalid password rejection, and logout/session invalidation |
+| TC-STU-01 | `StudentRecordTests`: student creation and duplicate student ID rejection; `CoreModelTests`: database uniqueness for student IDs |
+| TC-RM-01 | `HostelOperationsTests.test_staff_can_create_room_and_audit_action`: room creation; `CoreModelTests`: unique room code, unique room number per block, and minimum capacity constraints |
+| TC-AL-01–06 | `HostelOperationsTests` and `AllocationServiceTests`: available-room allocation, full-room rejection, duplicate active allocation rejection, and audit behavior; `CoreModelTests`: database guard against multiple active allocations and reallocation after completion; `StudentCheckInOutTests`: stay check-in/check-out and capacity protection |
+
+Latest verification: `python manage.py test` found 51 tests; all passed, with one MySQL-only concurrency test skipped on the SQLite test database. Django system checks reported no issues.
