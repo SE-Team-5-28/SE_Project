@@ -1,4 +1,3 @@
-
 from django.contrib import admin
 
 from .models import (
@@ -13,17 +12,9 @@ from .models import (
     UserRole,
 )
 
-
-@admin.register(AuditLog)
-class AuditLogAdmin(admin.ModelAdmin):
-    list_display = ("created_at", "actor", "action", "model_name", "object_id")
-    list_filter = ("action", "model_name")
-    search_fields = ("object_id", "actor__username")
-    readonly_fields = ("actor", "action", "model_name", "object_id", "details", "created_at")
-
-
+# Registering AuditLog dynamically prevents hardcoded field errors
 admin.site.register(
-    [Hostel, Block, Room, Allocation, TransferRequest, Complaint, UserRole]
+    [Hostel, Block, Room, Allocation, TransferRequest, AuditLog, Complaint]
 )
 
 
@@ -31,9 +22,16 @@ admin.site.register(
 class StudentAdmin(admin.ModelAdmin):
     list_display = (
         "student_id",
-        "full_name",
-        "hostel_name",
-        "room_number",
+        "user",
+        "department",
+        "year_of_study",
     )
-    search_fields = ("student_id", "full_name")
-    list_filter = ("hostel_name",)
+    search_fields = ("student_id", "user__username", "phone")
+    list_filter = ("department", "year_of_study")
+
+
+@admin.register(UserRole)
+class UserRoleAdmin(admin.ModelAdmin):
+    list_display = ("user", "role")
+    list_filter = ("role",)
+    search_fields = ("user__username",)

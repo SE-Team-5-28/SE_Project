@@ -36,7 +36,7 @@ class AllocationConcurrencyTests(TransactionTestCase):
         block = Block.objects.create(hostel=hostel, name="Block A")
         self.room = Room.objects.create(
             block=block,
-            room_number="101",
+            number="101",
             room_code="CONCURRENT-A-101",
             capacity=1,
         )

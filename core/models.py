@@ -5,10 +5,11 @@ from django.contrib.auth import get_user_model
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import Q
-from django.utils import timezone
 
 
 class UserRole(models.Model):
+    """Application role assigned to a built-in Django user."""
+
     class Role(models.TextChoices):
         STUDENT = "STUDENT", "Student"
         WARDEN = "WARDEN", "Warden"
@@ -45,8 +46,6 @@ class _RoleAwareUserManager:
                 if user.is_staff
                 else UserRole.Role.STUDENT
             )
-        if role not in UserRole.Role.values:
-            raise ValueError(f"Unknown user role: {role}")
         set_user_role(user, role)
         user.role = role
         return user
@@ -96,6 +95,8 @@ def get_user_role(user):
 
 
 class Student(models.Model):
+    """Student's hostel-related profile."""
+
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -103,12 +104,12 @@ class Student(models.Model):
         blank=True,
         related_name="student_profile",
     )
-    student_id = models.CharField(max_length=30, unique=True, db_index=True)
-    full_name = models.CharField(max_length=150)
+    student_id = models.CharField(max_length=30, unique=True)
+    full_name = models.CharField(max_length=150, blank=True)
     email = models.EmailField(blank=True)
     phone = models.CharField(max_length=20, blank=True)
-    hostel_name = models.CharField(max_length=100)
-    room_number = models.CharField(max_length=20)
+    hostel_name = models.CharField(max_length=100, blank=True)
+    room_number = models.CharField(max_length=20, blank=True)
     department = models.CharField(max_length=100, blank=True)
     year_of_study = models.PositiveSmallIntegerField(
         null=True,
@@ -122,17 +123,19 @@ class Student(models.Model):
         ordering = ["student_id"]
 
     def __str__(self):
-        return f"{self.student_id} - {self.full_name}"
+        return self.student_id
 
 
 class Hostel(models.Model):
+    """A hostel managed by the institution."""
+
     name = models.CharField(max_length=100, unique=True)
-    address = models.CharField(max_length=255, blank=True)
+    address = models.TextField(blank=True)
     warden = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
         null=True,
         blank=True,
+        on_delete=models.SET_NULL,
         related_name="managed_hostels",
     )
     created_at = models.DateTimeField(auto_now_add=True)
@@ -145,12 +148,14 @@ class Hostel(models.Model):
 
 
 class Block(models.Model):
+    """A block within a hostel."""
+
     hostel = models.ForeignKey(
         Hostel,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name="blocks",
     )
-    name = models.CharField(max_length=50)
+    name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
 
     class Meta:
@@ -158,7 +163,7 @@ class Block(models.Model):
         constraints = [
             models.UniqueConstraint(
                 fields=["hostel", "name"],
-                name="unique_block_per_hostel",
+                name="unique_block_name_per_hostel",
             ),
         ]
 
@@ -167,19 +172,15 @@ class Block(models.Model):
 
 
 class Room(models.Model):
+    """A room within a block."""
+
     block = models.ForeignKey(
         Block,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name="rooms",
     )
     number = models.CharField(max_length=20)
-    room_number = models.CharField(max_length=20, blank=True, default="")
-    room_code = models.CharField(
-        max_length=50,
-        unique=True,
-        null=True,
-        blank=True,
-    )
+    room_code = models.CharField(max_length=50, unique=True)
     capacity = models.PositiveIntegerField(
         validators=[MinValueValidator(1)],
     )
@@ -190,10 +191,6 @@ class Room(models.Model):
         constraints = [
             models.UniqueConstraint(
                 fields=["block", "number"],
-                name="unique_room_per_block",
-            ),
-            models.UniqueConstraint(
-                fields=["block", "room_number"],
                 name="unique_room_number_per_block",
             ),
             models.CheckConstraint(
@@ -202,55 +199,29 @@ class Room(models.Model):
             ),
         ]
 
-    def save(self, *args, **kwargs):
-        if self.pk:
-            previous = type(self).objects.filter(pk=self.pk).values(
-                "number",
-                "room_number",
-            ).first()
-        else:
-            previous = None
+    def __str__(self):
+        return f"{self.block} - Room {self.number}"
 
-        if previous:
-            number_changed = self.number != previous["number"]
-            room_number_changed = self.room_number != previous["room_number"]
-            if number_changed and not room_number_changed:
-                self.room_number = self.number
-            elif room_number_changed and not number_changed:
-                self.number = self.room_number
-            elif self.number != self.room_number:
-                raise ValueError("Room number fields must match.")
-        elif self.number and not self.room_number:
-            self.room_number = self.number
-        elif self.room_number and not self.number:
-            self.number = self.room_number
-        elif self.number != self.room_number:
-            raise ValueError("Room number fields must match.")
+    @property
+    def room_number(self):
+        return self.number
 
-        update_fields = kwargs.get("update_fields")
-        if update_fields is not None and (
-            "number" in update_fields or "room_number" in update_fields
-        ):
-            kwargs["update_fields"] = set(update_fields) | {
-                "number",
-                "room_number",
-            }
-
-        super().save(*args, **kwargs)
+    @room_number.setter
+    def room_number(self, value):
+        self.number = value
 
     @property
     def occupied_count(self):
-        return self.allocations.filter(is_active=True).count()
+        return self.allocations.filter(status=Allocation.Status.ACTIVE).count()
 
     @property
     def available_spaces(self):
         return max(self.capacity - self.occupied_count, 0)
 
-    def __str__(self):
-        return f"{self.block} / {self.room_number}"
-
 
 class Allocation(models.Model):
+    """A student's room allocation and stay record."""
+
     class Status(models.TextChoices):
         ACTIVE = "ACTIVE", "Active"
         COMPLETED = "COMPLETED", "Completed"
@@ -258,7 +229,7 @@ class Allocation(models.Model):
 
     student = models.ForeignKey(
         Student,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name="allocations",
     )
     room = models.ForeignKey(
@@ -266,10 +237,10 @@ class Allocation(models.Model):
         on_delete=models.PROTECT,
         related_name="allocations",
     )
+    allocation_date = models.DateField(auto_now_add=True)
     allocated_at = models.DateTimeField(auto_now_add=True)
     checked_out_at = models.DateTimeField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
-    allocation_date = models.DateField(default=timezone.localdate)
     status = models.CharField(
         max_length=12,
         choices=Status.choices,
@@ -277,6 +248,10 @@ class Allocation(models.Model):
     )
     check_in_date = models.DateField(null=True, blank=True)
     check_out_date = models.DateField(null=True, blank=True)
+
+    # MySQL-compatible database guard for one active allocation per student.
+    # Active records point this field to their student; historical records
+    # leave it NULL. The OneToOneField enforces uniqueness in the database.
     active_student_guard = models.OneToOneField(
         Student,
         null=True,
@@ -287,12 +262,6 @@ class Allocation(models.Model):
 
     class Meta:
         ordering = ["room", "student__student_id"]
-        indexes = [
-            models.Index(
-                fields=["room", "status"],
-                name="allocation_room_status_idx",
-            ),
-        ]
         constraints = [
             models.UniqueConstraint(
                 fields=["student"],
@@ -300,122 +269,81 @@ class Allocation(models.Model):
                 name="one_active_allocation_per_student",
             ),
         ]
+        indexes = [
+            models.Index(
+                fields=["room", "status"],
+                name="allocation_room_status_idx",
+            ),
+        ]
 
     def save(self, *args, **kwargs):
-        previous = None
-        if self.pk:
-            previous = type(self).objects.filter(pk=self.pk).values(
-                "status",
-                "is_active",
-            ).first()
-
-        if previous:
-            status_changed = self.status != previous["status"]
-            active_changed = self.is_active != previous["is_active"]
-            if status_changed and not active_changed:
-                self.is_active = self.status == self.Status.ACTIVE
-            elif active_changed and not status_changed:
-                self.status = (
-                    self.Status.ACTIVE
-                    if self.is_active
-                    else self.Status.COMPLETED
-                )
-            else:
-                self.is_active = self.status == self.Status.ACTIVE
-        elif self.status == self.Status.ACTIVE and not self.is_active:
-            self.status = self.Status.COMPLETED
+        if self.status == self.Status.ACTIVE:
+            self.active_student_guard = self.student
+            self.is_active = True
         else:
-            self.is_active = self.status == self.Status.ACTIVE
-
-        self.active_student_guard = (
-            self.student if self.status == self.Status.ACTIVE else None
-        )
+            self.active_student_guard = None
+            self.is_active = False
 
         update_fields = kwargs.get("update_fields")
         if update_fields is not None:
             kwargs["update_fields"] = set(update_fields) | {
-                "status",
-                "is_active",
                 "active_student_guard",
+                "is_active",
             }
 
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.student.student_id} -> {self.room}"
+        return f"{self.student.student_id} - {self.room}"
 
 
 class TransferRequest(models.Model):
+    """A student's request to transfer rooms."""
+
     class Status(models.TextChoices):
-        PENDING = "pending", "Pending"
-        APPROVED = "approved", "Approved"
-        REJECTED = "rejected", "Rejected"
+        PENDING = "PENDING", "Pending"
+        APPROVED = "APPROVED", "Approved"
+        REJECTED = "REJECTED", "Rejected"
 
     student = models.ForeignKey(
         Student,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name="transfer_requests",
     )
     requested_room = models.ForeignKey(
         Room,
+        null=True,
+        blank=True,
         on_delete=models.PROTECT,
         related_name="transfer_requests",
     )
     reason = models.TextField()
     status = models.CharField(
-        max_length=20,
+        max_length=10,
         choices=Status.choices,
         default=Status.PENDING,
     )
-    review_note = models.TextField(blank=True)
     reviewed_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
         null=True,
         blank=True,
+        on_delete=models.SET_NULL,
         related_name="reviewed_transfer_requests",
     )
     created_at = models.DateTimeField(auto_now_add=True)
     reviewed_at = models.DateTimeField(null=True, blank=True)
-    decision_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="transfer_decisions",
-    )
-    decided_at = models.DateTimeField(null=True, blank=True)
+    review_note = models.TextField(blank=True)
 
     class Meta:
         ordering = ["-created_at"]
 
-    def save(self, *args, **kwargs):
-        if self.decision_by and not self.reviewed_by:
-            self.reviewed_by = self.decision_by
-        elif self.reviewed_by and not self.decision_by:
-            self.decision_by = self.reviewed_by
-
-        if self.decided_at and not self.reviewed_at:
-            self.reviewed_at = self.decided_at
-        elif self.reviewed_at and not self.decided_at:
-            self.decided_at = self.reviewed_at
-
-        update_fields = kwargs.get("update_fields")
-        if update_fields is not None and (
-            {"decision_by", "reviewed_by", "decided_at", "reviewed_at"}
-            & set(update_fields)
-        ):
-            kwargs["update_fields"] = set(update_fields) | {
-                "decision_by",
-                "reviewed_by",
-                "decided_at",
-                "reviewed_at",
-            }
-
-        super().save(*args, **kwargs)
+    def __str__(self):
+        return f"Transfer #{self.pk} - {self.status}"
 
 
 class Complaint(models.Model):
+    """A complaint submitted by a student."""
+
     class Status(models.TextChoices):
         OPEN = "OPEN", "Open"
         IN_PROGRESS = "IN_PROGRESS", "In Progress"
@@ -448,60 +376,23 @@ class Complaint(models.Model):
 
 
 class AuditLog(models.Model):
+    """Records important actions performed in the HMS."""
+
     actor = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
         null=True,
         blank=True,
+        on_delete=models.SET_NULL,
         related_name="audit_events",
     )
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="audit_logs",
-    )
     action = models.CharField(max_length=100)
-    model_name = models.CharField(max_length=100, blank=True)
-    entity_type = models.CharField(max_length=100, blank=True)
-    object_id = models.CharField(max_length=100, blank=True)
-    entity_id = models.CharField(max_length=100, blank=True)
+    model_name = models.CharField(max_length=100)
+    object_id = models.CharField(max_length=50, blank=True)
     details = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    timestamp = models.DateTimeField(default=timezone.now)
 
     class Meta:
         ordering = ["-created_at"]
-
-    def save(self, *args, **kwargs):
-        if self.actor and not self.user:
-            self.user = self.actor
-        elif self.user and not self.actor:
-            self.actor = self.user
-
-        if self.model_name and not self.entity_type:
-            self.entity_type = self.model_name
-        elif self.entity_type and not self.model_name:
-            self.model_name = self.entity_type
-
-        if self.object_id and not self.entity_id:
-            self.entity_id = self.object_id
-        elif self.entity_id and not self.object_id:
-            self.object_id = self.entity_id
-
-        update_fields = kwargs.get("update_fields")
-        if update_fields is not None:
-            kwargs["update_fields"] = set(update_fields) | {
-                "actor",
-                "user",
-                "model_name",
-                "entity_type",
-                "object_id",
-                "entity_id",
-            }
-
-        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.action} - {self.created_at}"
