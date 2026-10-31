@@ -574,8 +574,6 @@ class SeedDemoCommandTests(TestCase):
             1,
         )
         self.assertIn("4 users, 2 students, and 1 active allocation.", output.getvalue())
-
-
 class AllocationServiceTests(TestCase):
     def setUp(self):
         self.hostel = Hostel.objects.create(name="Service Hostel")
