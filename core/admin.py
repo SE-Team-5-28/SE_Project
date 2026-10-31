@@ -1,16 +1,17 @@
-
 from django.contrib import admin
 
-from .models import Allocation, AuditLog, Block, Hostel, Room, Student, TransferRequest
 from .forms import AllocationForm
-
-
-@admin.register(AuditLog)
-class AuditLogAdmin(admin.ModelAdmin):
-    list_display = ("created_at", "actor", "action", "model_name", "object_id")
-    list_filter = ("action", "model_name")
-    search_fields = ("object_id", "actor__username")
-    readonly_fields = ("actor", "action", "model_name", "object_id", "details", "created_at")
+from .models import (
+    Allocation,
+    AuditLog,
+    Block,
+    Complaint,
+    Hostel,
+    Room,
+    Student,
+    TransferRequest,
+    UserRole,
+)
 
 
 @admin.register(Allocation)
@@ -18,16 +19,23 @@ class AllocationAdmin(admin.ModelAdmin):
     form = AllocationForm
 
 
-admin.site.register([Hostel, Block, Room, TransferRequest])
+admin.site.register([Hostel, Block, Room, TransferRequest, AuditLog, Complaint])
 
 
 @admin.register(Student)
 class StudentAdmin(admin.ModelAdmin):
     list_display = (
         "student_id",
-        "full_name",
-        "hostel_name",
-        "room_number",
+        "user",
+        "department",
+        "year_of_study",
     )
-    search_fields = ("student_id", "full_name")
-    list_filter = ("hostel_name",)
+    search_fields = ("student_id", "user__username", "phone")
+    list_filter = ("department", "year_of_study")
+
+
+@admin.register(UserRole)
+class UserRoleAdmin(admin.ModelAdmin):
+    list_display = ("user", "role")
+    list_filter = ("role",)
+    search_fields = ("user__username",)

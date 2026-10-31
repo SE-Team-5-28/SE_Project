@@ -1,5 +1,6 @@
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
+from django.utils import timezone
 
 from .models import Allocation, Room, Student
 
@@ -20,7 +21,7 @@ def allocate_student(student_id: int, room_id: int) -> Allocation:
 
     if Allocation.objects.filter(
         student=student,
-        is_active=True,
+        status=Allocation.Status.ACTIVE,
     ).exists():
         raise ValidationError(
             "This student already has an active allocation."
@@ -28,7 +29,7 @@ def allocate_student(student_id: int, room_id: int) -> Allocation:
 
     occupied = Allocation.objects.filter(
         room=room,
-        is_active=True,
+        status=Allocation.Status.ACTIVE,
     ).count()
 
     if occupied >= room.capacity:
@@ -41,7 +42,8 @@ def allocate_student(student_id: int, room_id: int) -> Allocation:
             return Allocation.objects.create(
                 student=student,
                 room=room,
-                is_active=True,
+                status=Allocation.Status.ACTIVE,
+                check_in_date=timezone.localdate(),
             )
     except IntegrityError as exc:
         raise ValidationError(

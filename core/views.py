@@ -1,4 +1,3 @@
-
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.core.exceptions import ValidationError
@@ -59,22 +58,16 @@ def dashboard(request):
 @login_required
 @staff_required
 def student_list(request):
-    students = Student.objects.prefetch_related(
+    students = Student.objects.select_related("user").prefetch_related(
         "allocations__room__block__hostel"
-    ).all()
-
-    return render(
-        request,
-        "core/student_list.html",
-        {"students": students},
     )
+    return render(request, "core/student_list.html", {"students": students})
 
 
 @login_required
 @staff_required
 def student_create(request):
     form = StudentForm(request.POST or None)
-
     if request.method == "POST" and form.is_valid():
         student = form.save()
         audit("created", student, request)
@@ -92,7 +85,6 @@ def student_create(request):
 def student_update(request, pk):
     student = get_object_or_404(Student, pk=pk)
     form = StudentForm(request.POST or None, instance=student)
-
     if request.method == "POST" and form.is_valid():
         student = form.save()
         audit("updated", student, request)
@@ -108,20 +100,14 @@ def student_update(request, pk):
 @login_required
 @staff_required
 def hostel_list(request):
-    hostels = Hostel.objects.prefetch_related("blocks__rooms")
-
-    return render(
-        request,
-        "core/hostel_list.html",
-        {"hostels": hostels},
-    )
+    hostels = Hostel.objects.prefetch_related("blocks__rooms__allocations")
+    return render(request, "core/hostel_list.html", {"hostels": hostels})
 
 
 @login_required
 @staff_required
 def hostel_create(request):
     form = HostelForm(request.POST or None)
-
     if request.method == "POST" and form.is_valid():
         hostel = form.save()
         audit("created", hostel, request)
@@ -138,7 +124,6 @@ def hostel_create(request):
 @staff_required
 def block_create(request):
     form = BlockForm(request.POST or None)
-
     if request.method == "POST" and form.is_valid():
         block = form.save()
         audit("created", block, request)
@@ -155,7 +140,6 @@ def block_create(request):
 @staff_required
 def room_create(request):
     form = RoomForm(request.POST or None)
-
     if request.method == "POST" and form.is_valid():
         room = form.save()
         audit("created", room, request)
@@ -171,17 +155,12 @@ def room_create(request):
 @login_required
 @staff_required
 def allocation_list(request):
-    # Show both active and previously checked-out allocations.
-    allocations = (
-        Allocation.objects.select_related(
-            "student",
-            "room",
-            "room__block",
-            "room__block__hostel",
-        )
-        .order_by("-allocated_at")
-    )
-
+    allocations = Allocation.objects.select_related(
+        "student__user",
+        "room",
+        "room__block",
+        "room__block__hostel",
+    ).order_by("-allocation_date")
     return render(
         request,
         "core/allocation_list.html",
@@ -193,13 +172,7 @@ def allocation_list(request):
 @staff_required
 @transaction.atomic
 def allocation_create(request):
-    if request.method == "POST":
-        room_id = request.POST.get("room")
-        if room_id:
-            Room.objects.select_for_update().filter(pk=room_id).first()
-
     form = AllocationForm(request.POST or None)
-
     if request.method == "POST" and form.is_valid():
         try:
             allocation = allocate_student(
@@ -210,18 +183,11 @@ def allocation_create(request):
             form.add_error(None, exc)
         else:
             allocation.student.hostel_name = allocation.room.block.hostel.name
-            allocation.student.room_number = allocation.room.number
+            allocation.student.room_number = allocation.room.room_number
             allocation.student.save(
                 update_fields=["hostel_name", "room_number", "updated_at"]
             )
-
-            audit(
-                "allocated",
-                allocation,
-                request,
-                {"room": str(allocation.room)},
-            )
-
+            audit("allocated", allocation, request, {"room": str(allocation.room)})
             messages.success(request, "Room allocated successfully.")
             return redirect("allocation_list")
 
@@ -241,23 +207,17 @@ def check_in(request, pk):
         Allocation.objects.select_for_update(),
         pk=pk,
     )
-
-    if allocation.is_active:
-        messages.warning(
-            request,
-            "This student is already checked in.",
-        )
+    if allocation.status == Allocation.Status.ACTIVE:
+        messages.warning(request, "This student is already checked in.")
         return redirect("allocation_list")
 
     room = get_object_or_404(
         Room.objects.select_for_update(),
         pk=allocation.room_id,
     )
-
-    # Prevent a student from having two active allocations.
     if Allocation.objects.filter(
         student=allocation.student,
-        is_active=True,
+        status=Allocation.Status.ACTIVE,
     ).exists():
         messages.error(
             request,
@@ -265,7 +225,6 @@ def check_in(request, pk):
         )
         return redirect("allocation_list")
 
-    # Check room capacity before allowing check-in.
     if room.available_spaces <= 0:
         messages.error(
             request,
@@ -273,37 +232,23 @@ def check_in(request, pk):
         )
         return redirect("allocation_list")
 
-    # Reactivate the allocation and record the new check-in time.
-    allocation.is_active = True
-    allocation.allocated_at = timezone.now()
-    allocation.checked_out_at = None
+    allocation.status = Allocation.Status.ACTIVE
+    allocation.check_in_date = timezone.localdate()
+    allocation.check_out_date = None
     allocation.save(
-        update_fields=[
-            "is_active",
-            "allocated_at",
-            "checked_out_at",
-        ]
+        update_fields=["status", "check_in_date", "check_out_date",
+                       "active_student_guard", "is_active"]
     )
-
-    student = allocation.student
-    student.hostel_name = room.block.hostel.name
-    student.room_number = room.number
-    student.save(
+    allocation.student.hostel_name = room.block.hostel.name
+    allocation.student.room_number = room.room_number
+    allocation.student.save(
         update_fields=["hostel_name", "room_number", "updated_at"]
     )
-
-    audit(
-        "checked_in",
-        allocation,
-        request,
-        {"room": str(room)},
-    )
-
+    audit("checked_in", allocation, request, {"room": str(room)})
     messages.success(
         request,
-        f"{student.full_name} has been checked in successfully.",
+        f"{allocation.student.full_name} has been checked in successfully.",
     )
-
     return redirect("allocation_list")
 
 
@@ -316,40 +261,32 @@ def check_out(request, pk):
         Allocation.objects.select_for_update(),
         pk=pk,
     )
-
-    if not allocation.is_active:
-        messages.warning(
-            request,
-            "This student has already been checked out.",
-        )
+    if allocation.status != Allocation.Status.ACTIVE:
+        messages.warning(request, "This student has already been checked out.")
         return redirect("allocation_list")
 
-    # Mark the allocation as inactive and record check-out time.
-    allocation.is_active = False
+    allocation.status = Allocation.Status.COMPLETED
+    allocation.check_out_date = timezone.localdate()
     allocation.checked_out_at = timezone.now()
     allocation.save(
-        update_fields=["is_active", "checked_out_at"]
+        update_fields=[
+            "status",
+            "check_out_date",
+            "checked_out_at",
+            "active_student_guard",
+            "is_active",
+        ]
     )
-
-    student = allocation.student
-    student.hostel_name = ""
-    student.room_number = ""
-    student.save(
+    allocation.student.hostel_name = ""
+    allocation.student.room_number = ""
+    allocation.student.save(
         update_fields=["hostel_name", "room_number", "updated_at"]
     )
-
-    audit(
-        "checked_out",
-        allocation,
-        request,
-        {"room": str(allocation.room)},
-    )
-
+    audit("checked_out", allocation, request, {"room": str(allocation.room)})
     messages.success(
         request,
-        f"{student.full_name} has been checked out successfully.",
+        f"{allocation.student.full_name} has been checked out successfully.",
     )
-
     return redirect("allocation_list")
 
 
@@ -357,10 +294,9 @@ def check_out(request, pk):
 @staff_required
 def transfer_list(request):
     transfer_requests = TransferRequest.objects.select_related(
-        "student",
+        "student__user",
         "requested_room",
     )
-
     return render(
         request,
         "core/transfer_list.html",
@@ -379,23 +315,16 @@ def transfer_create(request):
         )
         return redirect("dashboard")
 
-    form = TransferRequestForm(
-        request.POST or None,
-        student=student,
-    )
-
+    form = TransferRequestForm(request.POST or None, student=student)
     if request.method == "POST" and form.is_valid():
         transfer = form.save(commit=False)
         transfer.student = student
         transfer.save()
-
         audit("submitted", transfer, request)
-
         messages.success(
             request,
             "Your room transfer request was submitted.",
         )
-
         return redirect("dashboard")
 
     return render(
@@ -410,10 +339,12 @@ def transfer_create(request):
 @transaction.atomic
 def transfer_review(request, pk, decision):
     transfer = get_object_or_404(
-        TransferRequest.objects.select_for_update(),
+        TransferRequest.objects.select_for_update().select_related(
+            "student",
+            "requested_room",
+        ),
         pk=pk,
     )
-
     if (
         request.method != "POST"
         or transfer.status != TransferRequest.Status.PENDING
@@ -421,59 +352,58 @@ def transfer_review(request, pk, decision):
         return redirect("transfer_list")
 
     if decision == "approve":
-        requested_room = get_object_or_404(
-            Room.objects.select_for_update(),
-            pk=transfer.requested_room_id,
-        )
-        if requested_room.available_spaces <= 0:
+        room = transfer.requested_room
+        if room is None or room.available_spaces <= 0:
             messages.error(
                 request,
                 "The requested room is no longer available.",
             )
             return redirect("transfer_list")
 
-        old = Allocation.objects.filter(
-            student=transfer.student,
-            is_active=True,
-        ).first()
-
-        if old:
-            old.is_active = False
-            old.checked_out_at = timezone.now()
-            old.save(
-                update_fields=["is_active", "checked_out_at"]
-            )
-
-        Allocation.objects.create(
-            student=transfer.student,
-            room=requested_room,
-            is_active=True,
+        room = get_object_or_404(
+            Room.objects.select_for_update(),
+            pk=room.pk,
         )
+        try:
+            with transaction.atomic():
+                old_allocation = Allocation.objects.filter(
+                    student=transfer.student,
+                    status=Allocation.Status.ACTIVE,
+                ).first()
+                if old_allocation:
+                    old_allocation.status = Allocation.Status.COMPLETED
+                    old_allocation.check_out_date = timezone.localdate()
+                    old_allocation.save(
+                        update_fields=[
+                            "status",
+                            "check_out_date",
+                            "active_student_guard",
+                            "is_active",
+                        ]
+                    )
 
-        transfer.student.hostel_name = (
-            requested_room.block.hostel.name
-        )
-        transfer.student.room_number = (
-            requested_room.number
-        )
+                new_allocation = allocate_student(
+                    student_id=transfer.student_id,
+                    room_id=room.pk,
+                )
+        except ValidationError as exc:
+            messages.error(request, str(exc))
+            return redirect("transfer_list")
+
+        audit("allocated", new_allocation, request, {"room": str(room)})
+        transfer.student.hostel_name = room.block.hostel.name
+        transfer.student.room_number = room.room_number
         transfer.student.save(
             update_fields=["hostel_name", "room_number", "updated_at"]
         )
-
         transfer.status = TransferRequest.Status.APPROVED
-
     elif decision == "reject":
         transfer.status = TransferRequest.Status.REJECTED
-
     else:
         return redirect("transfer_list")
 
     transfer.reviewed_by = request.user
     transfer.reviewed_at = timezone.now()
-    transfer.save(
-        update_fields=["status", "reviewed_by", "reviewed_at"]
-    )
-
+    transfer.save(update_fields=["status", "reviewed_by", "reviewed_at"])
     audit(decision, transfer, request)
-
     return redirect("transfer_list")

@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from django.db import transaction
 
 from core.models import (
@@ -8,8 +8,11 @@ from core.models import (
     Hostel,
     Room,
     Student,
+    UserRole,
 )
-from core.services import allocate_student
+
+
+User = get_user_model()
 
 
 class Command(BaseCommand):
@@ -37,70 +40,78 @@ class Command(BaseCommand):
             block=block_a,
             number="101",
             defaults={
+                "room_code": "DEMO-A-101",
                 "capacity": 2,
+                "description": "Double occupancy",
             },
         )
         Room.objects.get_or_create(
             block=block_a,
             number="102",
             defaults={
+                "room_code": "DEMO-A-102",
                 "capacity": 3,
+                "description": "Triple occupancy",
             },
         )
         Room.objects.get_or_create(
             block=block_b,
             number="201",
             defaults={
+                "room_code": "DEMO-B-201",
                 "capacity": 2,
+                "description": "Double occupancy",
             },
         )
 
+        # Create demonstration accounts without hardcoded passwords.
         demo_users = [
             {
                 "username": "demo_student1",
+                "role": UserRole.Role.STUDENT,
                 "email": "student1@example.com",
-                "is_staff": False,
             },
             {
                 "username": "demo_student2",
+                "role": UserRole.Role.STUDENT,
                 "email": "student2@example.com",
-                "is_staff": False,
             },
             {
                 "username": "demo_warden",
+                "role": UserRole.Role.WARDEN,
                 "email": "warden@example.com",
-                "is_staff": True,
             },
             {
                 "username": "demo_admin",
+                "role": UserRole.Role.HOSTEL_ADMIN,
                 "email": "hosteladmin@example.com",
-                "is_staff": True,
             },
         ]
 
         created_users = {}
         for details in demo_users:
             username = details["username"]
-            user, created = User.objects.get_or_create(
+            user, _ = User.objects.get_or_create(
                 username=username,
                 defaults={
                     "email": details["email"],
-                    "is_staff": details["is_staff"],
+                    "is_active": True,
                 },
             )
-            if created:
-                user.set_unusable_password()
-                user.save(update_fields=["password"])
             created_users[username] = user
+            UserRole.objects.update_or_create(
+                user=user,
+                defaults={"role": details["role"]},
+            )
 
+        # Create student profiles.
         student1, _ = Student.objects.get_or_create(
             student_id="DEMO-STU-001",
             defaults={
                 "user": created_users["demo_student1"],
                 "full_name": "Demo Student One",
-                "email": "student1@example.com",
-                "hostel_name": "",
-                "room_number": "",
+                "department": "Computer Science",
+                "year_of_study": 2,
             },
         )
         student2, _ = Student.objects.get_or_create(
@@ -108,17 +119,20 @@ class Command(BaseCommand):
             defaults={
                 "user": created_users["demo_student2"],
                 "full_name": "Demo Student Two",
-                "email": "student2@example.com",
-                "hostel_name": "",
-                "room_number": "",
+                "department": "Information Science",
+                "year_of_study": 2,
             },
         )
 
-        if not Allocation.objects.filter(
+        # Create one active allocation for the first student.
+        Allocation.objects.get_or_create(
             student=student1,
-            is_active=True,
-        ).exists():
-            allocate_student(student1.pk, room_101.pk)
+            status=Allocation.Status.ACTIVE,
+            defaults={
+                "room": room_101,
+                "check_in_date": None,
+            },
+        )
 
         # Keep the second student as an example of an unallocated student.
         self.stdout.write(

@@ -7,30 +7,25 @@ class Migration(migrations.Migration):
 
     initial = True
 
-    dependencies = []
+    dependencies = [
+    ]
 
     operations = [
         migrations.CreateModel(
-            name="Student",
+            name='Student',
             fields=[
-                (
-                    "id",
-                    models.BigAutoField(
-                        auto_created=True,
-                        primary_key=True,
-                        serialize=False,
-                        verbose_name="ID",
-                    ),
-                ),
-                ("student_id", models.CharField(db_index=True, max_length=30, unique=True)),
-                ("full_name", models.CharField(max_length=150)),
-                ("email", models.EmailField(blank=True, max_length=254)),
-                ("phone", models.CharField(blank=True, max_length=20)),
-                ("hostel_name", models.CharField(max_length=100)),
-                ("room_number", models.CharField(max_length=20)),
-                ("created_at", models.DateTimeField(auto_now_add=True)),
-                ("updated_at", models.DateTimeField(auto_now=True)),
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('student_id', models.CharField(db_index=True, max_length=30, unique=True)),
+                ('full_name', models.CharField(max_length=150)),
+                ('email', models.EmailField(blank=True, max_length=254)),
+                ('phone', models.CharField(blank=True, max_length=20)),
+                ('hostel_name', models.CharField(max_length=100)),
+                ('room_number', models.CharField(max_length=20)),
+                ('created_at', models.DateTimeField(auto_now_add=True)),
+                ('updated_at', models.DateTimeField(auto_now=True)),
             ],
-            options={"ordering": ["student_id"]},
+            options={
+                'ordering': ['student_id'],
+            },
         ),
     ]

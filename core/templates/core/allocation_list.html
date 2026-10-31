@@ -39,27 +39,27 @@
                 </td>
 
                 <td>
-                    {{ allocation.allocated_at|date:"d M Y, H:i" }}
+                    {{ allocation.check_in_date|date:"d M Y" }}
                 </td>
 
                 <td>
-                    {% if allocation.checked_out_at %}
-                        {{ allocation.checked_out_at|date:"d M Y, H:i" }}
+                    {% if allocation.check_out_date %}
+                        {{ allocation.check_out_date|date:"d M Y" }}
                     {% else %}
                         —
                     {% endif %}
                 </td>
 
                 <td>
-                    {% if allocation.is_active %}
+                    {% if allocation.status == "ACTIVE" %}
                         <strong>Active</strong>
                     {% else %}
-                        Checked Out
+                        {{ allocation.get_status_display }}
                     {% endif %}
                 </td>
 
                 <td>
-                    {% if allocation.is_active %}
+                    {% if allocation.status == "ACTIVE" %}
 
                         <form
                             method="post"
