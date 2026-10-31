@@ -1,5 +1,6 @@
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
+from django.utils import timezone
 
 from .models import Allocation, Room, Student
 
@@ -42,6 +43,7 @@ def allocate_student(student_id: int, room_id: int) -> Allocation:
                 student=student,
                 room=room,
                 status=Allocation.Status.ACTIVE,
+                check_in_date=timezone.localdate(),
             )
     except IntegrityError as exc:
         raise ValidationError(

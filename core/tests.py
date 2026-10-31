@@ -1,6 +1,7 @@
 from io import StringIO
 
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 from django.core.management import call_command
 from django.db import IntegrityError, connection, transaction
 from django.db.migrations.executor import MigrationExecutor
@@ -18,6 +19,7 @@ from .models import (
     TransferRequest,
     UserRole,
 )
+from .services import allocate_student
 
 User = get_user_model()
 
@@ -572,3 +574,52 @@ class SeedDemoCommandTests(TestCase):
             1,
         )
         self.assertIn("4 users, 2 students, and 1 active allocation.", output.getvalue())
+class AllocationServiceTests(TestCase):
+    def setUp(self):
+        self.hostel = Hostel.objects.create(name="Service Hostel")
+        self.block = Block.objects.create(hostel=self.hostel, name="A")
+        self.room = Room.objects.create(
+            block=self.block,
+            number="101",
+            room_code="SERVICE-101",
+            capacity=1,
+        )
+        self.student_one = Student.objects.create(
+            student_id="SERVICE001",
+            full_name="Service Student One",
+        )
+        self.student_two = Student.objects.create(
+            student_id="SERVICE002",
+            full_name="Service Student Two",
+        )
+
+    def test_service_allocates_student_when_room_has_space(self):
+        allocation = allocate_student(self.student_one.pk, self.room.pk)
+
+        self.assertEqual(allocation.status, Allocation.Status.ACTIVE)
+        self.assertEqual(allocation.active_student_guard_id, self.student_one.pk)
+        self.assertEqual(self.room.available_spaces, 0)
+
+    def test_service_rejects_allocation_when_room_is_full(self):
+        allocate_student(self.student_one.pk, self.room.pk)
+
+        with self.assertRaisesMessage(
+            ValidationError,
+            "This room is already at full capacity.",
+        ):
+            allocate_student(self.student_two.pk, self.room.pk)
+
+    def test_service_rejects_second_active_allocation_for_student(self):
+        allocate_student(self.student_one.pk, self.room.pk)
+        other_room = Room.objects.create(
+            block=self.block,
+            number="102",
+            room_code="SERVICE-102",
+            capacity=1,
+        )
+
+        with self.assertRaisesMessage(
+            ValidationError,
+            "This student already has an active allocation.",
+        ):
+            allocate_student(self.student_one.pk, other_room.pk)

@@ -1,5 +1,6 @@
 from django.contrib import admin
 
+from .forms import AllocationForm
 from .models import (
     Allocation,
     AuditLog,
@@ -12,10 +13,13 @@ from .models import (
     UserRole,
 )
 
-# Registering AuditLog dynamically prevents hardcoded field errors
-admin.site.register(
-    [Hostel, Block, Room, Allocation, TransferRequest, AuditLog, Complaint]
-)
+
+@admin.register(Allocation)
+class AllocationAdmin(admin.ModelAdmin):
+    form = AllocationForm
+
+
+admin.site.register([Hostel, Block, Room, TransferRequest, AuditLog, Complaint])
 
 
 @admin.register(Student)

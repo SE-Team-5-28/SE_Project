@@ -1,5 +1,6 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
+from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -24,6 +25,7 @@ from .models import (
     User,
     get_user_role,
 )
+from .services import allocate_student
 from .permissions import role_required
 
 
@@ -208,15 +210,22 @@ def allocation_list(request):
 def allocation_create(request):
     form = AllocationForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
-        allocation = form.save()
-        allocation.student.hostel_name = allocation.room.block.hostel.name
-        allocation.student.room_number = allocation.room.room_number
-        allocation.student.save(
-            update_fields=["hostel_name", "room_number", "updated_at"]
-        )
-        audit("allocated", allocation, request, {"room": str(allocation.room)})
-        messages.success(request, "Room allocated successfully.")
-        return redirect("allocation_list")
+        try:
+            allocation = allocate_student(
+                student_id=form.cleaned_data["student"].pk,
+                room_id=form.cleaned_data["room"].pk,
+            )
+        except ValidationError as exc:
+            form.add_error(None, exc)
+        else:
+            allocation.student.hostel_name = allocation.room.block.hostel.name
+            allocation.student.room_number = allocation.room.room_number
+            allocation.student.save(
+                update_fields=["hostel_name", "room_number", "updated_at"]
+            )
+            audit("allocated", allocation, request, {"room": str(allocation.room)})
+            messages.success(request, "Room allocated successfully.")
+            return redirect("allocation_list")
 
     return render(
         request,
@@ -387,28 +396,36 @@ def transfer_review(request, pk, decision):
             )
             return redirect("transfer_list")
 
-        old_allocation = Allocation.objects.filter(
-            student=transfer.student,
-            status=Allocation.Status.ACTIVE,
-        ).first()
-        if old_allocation:
-            old_allocation.status = Allocation.Status.COMPLETED
-            old_allocation.check_out_date = timezone.localdate()
-            old_allocation.save(
-                update_fields=[
-                    "status",
-                    "check_out_date",
-                    "active_student_guard",
-                    "is_active",
-                ]
-            )
-
-        new_allocation = Allocation.objects.create(
-            student=transfer.student,
-            room=room,
-            status=Allocation.Status.ACTIVE,
-            check_in_date=timezone.localdate(),
+        room = get_object_or_404(
+            Room.objects.select_for_update(),
+            pk=room.pk,
         )
+        try:
+            with transaction.atomic():
+                old_allocation = Allocation.objects.filter(
+                    student=transfer.student,
+                    status=Allocation.Status.ACTIVE,
+                ).first()
+                if old_allocation:
+                    old_allocation.status = Allocation.Status.COMPLETED
+                    old_allocation.check_out_date = timezone.localdate()
+                    old_allocation.save(
+                        update_fields=[
+                            "status",
+                            "check_out_date",
+                            "active_student_guard",
+                            "is_active",
+                        ]
+                    )
+
+                new_allocation = allocate_student(
+                    student_id=transfer.student_id,
+                    room_id=room.pk,
+                )
+        except ValidationError as exc:
+            messages.error(request, str(exc))
+            return redirect("transfer_list")
+
         audit("allocated", new_allocation, request, {"room": str(room)})
         transfer.student.hostel_name = room.block.hostel.name
         transfer.student.room_number = room.room_number

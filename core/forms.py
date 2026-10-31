@@ -1,4 +1,5 @@
 from django import forms
+
 from .models import Allocation, Block, Hostel, Room, Student, TransferRequest
 
 
@@ -45,14 +46,23 @@ class AllocationForm(forms.ModelForm):
         cleaned = super().clean()
         student = cleaned.get("student")
         room = cleaned.get("room")
-        
-        # Ensures a student only has one active allocation
-        if student and Allocation.objects.filter(student=student, status=Allocation.Status.ACTIVE).exclude(pk=self.instance.pk).exists():
+
+        if (
+            student
+            and Allocation.objects.filter(
+                student=student,
+                status=Allocation.Status.ACTIVE,
+            )
+            .exclude(pk=self.instance.pk)
+            .exists()
+        ):
             self.add_error("student", "This student already has an active allocation.")
-            
-        # Calculates available room space
+
         if room:
-            occupied = Allocation.objects.filter(room=room, status=Allocation.Status.ACTIVE).count()
+            occupied = Allocation.objects.filter(
+                room=room,
+                status=Allocation.Status.ACTIVE,
+            ).exclude(pk=self.instance.pk).count()
             if occupied >= room.capacity:
                 self.add_error("room", "This room has no available space.")
         return cleaned
@@ -74,14 +84,21 @@ class TransferRequestForm(forms.ModelForm):
         room = self.cleaned_data["requested_room"]
         if room is None:
             return room
-        
-        # Check if the requested room is full
-        occupied = Allocation.objects.filter(room=room, status=Allocation.Status.ACTIVE).count()
+
+        occupied = Allocation.objects.filter(
+            room=room,
+            status=Allocation.Status.ACTIVE,
+        ).count()
         if occupied >= room.capacity:
             raise forms.ValidationError("That room is currently full.")
-            
-        # Check if the requested room is the same as their current room
-        current = self.student.allocations.filter(status=Allocation.Status.ACTIVE).first() if self.student else None
+
+        current = (
+            self.student.allocations.filter(
+                status=Allocation.Status.ACTIVE,
+            ).first()
+            if self.student
+            else None
+        )
         if current and current.room_id == room.id:
             raise forms.ValidationError("Choose a room different from your current room.")
         return room
