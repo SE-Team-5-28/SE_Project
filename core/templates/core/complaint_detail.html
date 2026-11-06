@@ -1,0 +1,20 @@
+{% extends 'core/base.html' %}
+{% block title %}Complaint {{ complaint.reference }}{% endblock %}
+{% block content %}
+<div class="page-heading">
+    <h1>Complaint details</h1>
+    <a href="{% url 'complaint_list' %}">Back to my complaints</a>
+</div>
+<section class="card">
+    <p><strong>Reference</strong> {{ complaint.reference }}</p>
+    <p><strong>Status</strong> {{ complaint.get_status_display }}</p>
+    <p><strong>Category</strong> {{ complaint.category }}</p>
+    <p><strong>Submitted</strong> {{ complaint.created_at|date:"d M Y, H:i" }}</p>
+    <p><strong>Description</strong></p>
+    <p>{{ complaint.description|linebreaksbr }}</p>
+    {% if complaint.remarks %}
+        <p><strong>Staff remarks</strong></p>
+        <p>{{ complaint.remarks|linebreaksbr }}</p>
+    {% endif %}
+</section>
+{% endblock %}
