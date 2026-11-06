@@ -720,3 +720,153 @@ class AllocationServiceTests(TestCase):
             "This student already has an active allocation.",
         ):
             allocate_student(self.student_one.pk, other_room.pk)
+
+
+from django.test import TestCase
+from django.urls import reverse
+from django.contrib.auth import get_user_model
+
+from .forms import StudentForm, RoomForm
+from .models import Student, Hostel, Block, Room
+
+
+User = get_user_model()
+
+
+class InputValidationSecurityTests(TestCase):
+
+    def setUp(self):
+        self.staff = User.objects.create_user(
+            username="security_warden",
+            password="TestPassword123!",
+            is_staff=True,
+        )
+
+        self.student_user = User.objects.create_user(
+            username="security_student",
+            password="TestPassword123!",
+        )
+
+        self.hostel = Hostel.objects.create(name="Security Hostel")
+        self.block = Block.objects.create(
+            hostel=self.hostel,
+            name="Block A",
+        )
+
+        self.room = Room.objects.create(
+            block=self.block,
+            number="101",
+            room_code="SECURITY-101",
+            capacity=2,
+        )
+
+    def test_valid_student_input_is_accepted(self):
+        form = StudentForm(data={
+            "user": self.student_user.pk,
+            "student_id": "PES999",
+            "full_name": "Test Student",
+            "email": "test@example.com",
+            "phone": "9876543210",
+            "hostel_name": "",
+            "room_number": "",
+            "department": "Computer Science",
+            "year_of_study": 2,
+        })
+
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_sql_injection_student_id_is_rejected(self):
+        form = StudentForm(data={
+            "user": self.student_user.pk,
+            "student_id": "' OR '1'='1",
+            "full_name": "Test Student",
+            "email": "test@example.com",
+            "phone": "9876543210",
+            "hostel_name": "",
+            "room_number": "",
+            "department": "Computer Science",
+            "year_of_study": 2,
+        })
+
+        self.assertFalse(form.is_valid())
+        self.assertIn("student_id", form.errors)
+
+    def test_invalid_phone_number_is_rejected(self):
+        form = StudentForm(data={
+            "user": self.student_user.pk,
+            "student_id": "PES998",
+            "full_name": "Test Student",
+            "email": "test@example.com",
+            "phone": "phone<script>alert(1)</script>",
+            "hostel_name": "",
+            "room_number": "",
+            "department": "Computer Science",
+            "year_of_study": 2,
+        })
+
+        self.assertFalse(form.is_valid())
+        self.assertIn("phone", form.errors)
+
+    def test_invalid_room_code_is_rejected(self):
+        form = RoomForm(data={
+            "block": self.block.pk,
+            "number": "102",
+            "room_code": "' OR 1=1 --",
+            "capacity": 2,
+            "description": "",
+        })
+
+        self.assertFalse(form.is_valid())
+        self.assertIn("room_code", form.errors)
+
+    def test_oversized_transfer_reason_is_rejected(self):
+        from .forms import TransferRequestForm
+
+        form = TransferRequestForm(data={
+            "requested_room": self.room.pk,
+            "reason": "A" * 1001,
+        })
+
+        self.assertFalse(form.is_valid())
+        self.assertIn("reason", form.errors)
+
+    def test_injection_string_does_not_change_orm_query(self):
+        Student.objects.create(
+            user=self.student_user,
+            student_id="PES997",
+        )
+
+        malicious_input = "' OR '1'='1"
+
+        # Django treats the supplied value as data, not SQL.
+        result = Student.objects.filter(
+            student_id=malicious_input
+        )
+
+        self.assertEqual(result.count(), 0)
+        self.assertEqual(Student.objects.count(), 1)
+
+    def test_invalid_input_is_rejected_by_student_create_view(self):
+        self.client.force_login(self.staff)
+
+        response = self.client.post(
+            reverse("student_create"),
+            {
+                "user": self.student_user.pk,
+                "student_id": "' OR '1'='1",
+                "full_name": "Test Student",
+                "email": "test@example.com",
+                "phone": "9876543210",
+                "hostel_name": "",
+                "room_number": "",
+                "department": "Computer Science",
+                "year_of_study": 2,
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(
+            Student.objects.filter(
+                student_id="' OR '1'='1"
+            ).exists()
+        )
