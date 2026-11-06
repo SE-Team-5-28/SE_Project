@@ -188,6 +188,48 @@ class HostelOperationsTests(TestCase):
             capacity=1,
         )
 
+    def test_occupancy_report_counts_active_allocations_and_vacancies(self):
+        larger_room = Room.objects.create(
+            block=self.block,
+            number="102",
+            room_code="NORTH-A-102",
+            capacity=2,
+        )
+        empty_hostel = Hostel.objects.create(name="Empty Hostel")
+        historical_user = User.objects.create_user(
+            username="historical_student",
+            password="testpassword123",
+        )
+        historical_student = Student.objects.create(
+            user=historical_user,
+            student_id="PES102",
+        )
+        Allocation.objects.create(student=self.student, room=self.room)
+        Allocation.objects.create(
+            student=historical_student,
+            room=larger_room,
+            status=Allocation.Status.COMPLETED,
+        )
+
+        self.client.force_login(self.staff)
+        response = self.client.get(reverse("occupancy_report"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.context["totals"],
+            {"capacity": 3, "occupied": 1, "vacancies": 2},
+        )
+        empty_summary = next(
+            summary
+            for summary in response.context["summaries"]
+            if summary["hostel"] == empty_hostel
+        )
+        self.assertEqual(
+            (empty_summary["capacity"], empty_summary["occupied"],
+             empty_summary["vacancies"]),
+            (0, 0, 0),
+        )
+
     def test_staff_can_create_room_and_audit_action(self):
         self.client.force_login(self.staff)
 

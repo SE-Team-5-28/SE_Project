@@ -107,6 +107,20 @@ class RoleBasedAccessTests(TestCase):
 
         self.assertEqual(response.status_code, 403)
 
+    def test_staff_roles_can_access_occupancy_report(self):
+        for user in (self.warden, self.hostel_admin, self.system_admin):
+            with self.subTest(role=user.role):
+                self.client.force_login(user)
+                response = self.client.get(reverse("occupancy_report"))
+                self.assertEqual(response.status_code, 200)
+
+    def test_student_cannot_access_occupancy_report(self):
+        self.client.force_login(self.student)
+
+        response = self.client.get(reverse("occupancy_report"))
+
+        self.assertEqual(response.status_code, 403)
+
     def test_anonymous_user_is_redirected_to_login(self):
         response = self.client.get(reverse("student_dashboard"))
 

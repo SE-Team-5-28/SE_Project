@@ -1,0 +1,55 @@
+{% extends 'core/base.html' %}
+{% block title %}Occupancy and Vacancy Report{% endblock %}
+{% block content %}
+<div class="page-heading">
+    <h1>Occupancy and vacancy report</h1>
+</div>
+
+<div class="grid">
+    <div class="card">
+        <strong>{{ totals.capacity }}</strong>
+        <span>Total capacity</span>
+    </div>
+    <div class="card">
+        <strong>{{ totals.occupied }}</strong>
+        <span>Occupied spaces</span>
+    </div>
+    <div class="card">
+        <strong>{{ totals.vacancies }}</strong>
+        <span>Vacant spaces</span>
+    </div>
+</div>
+
+<div class="table-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th>Hostel</th>
+                <th>Capacity</th>
+                <th>Occupied</th>
+                <th>Vacant</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for summary in summaries %}
+                <tr>
+                    <th scope="row">{{ summary.hostel.name }}</th>
+                    <td>{{ summary.capacity }}</td>
+                    <td>{{ summary.occupied }}</td>
+                    <td>{{ summary.vacancies }}</td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="4">No hostels have been added.</td>
+                </tr>
+            {% endfor %}
+            <tr>
+                <th scope="row">All hostels</th>
+                <td>{{ totals.capacity }}</td>
+                <td>{{ totals.occupied }}</td>
+                <td>{{ totals.vacancies }}</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+{% endblock %}

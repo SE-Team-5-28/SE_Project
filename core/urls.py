@@ -29,6 +29,11 @@ urlpatterns = [
     path("rooms/add/", views.room_create, name="room_create"),
     path("allocations/", views.allocation_list, name="allocation_list"),
     path(
+        "reports/occupancy/",
+        views.occupancy_report,
+        name="occupancy_report",
+    ),
+    path(
         "allocations/add/",
         views.allocation_create,
         name="allocation_create",
