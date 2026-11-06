@@ -44,6 +44,11 @@ urlpatterns = [
         name="check_out",
     ),
     path("transfers/", views.transfer_list, name="transfer_list"),
+    path(
+        "pending-requests/",
+        views.pending_requests_dashboard,
+        name="pending_requests",
+    ),
     path("transfers/add/", views.transfer_create, name="transfer_create"),
     path(
         "transfers/<int:pk>/<str:decision>/",
