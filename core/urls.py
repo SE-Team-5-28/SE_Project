@@ -49,6 +49,17 @@ urlpatterns = [
         name="check_out",
     ),
     path("transfers/", views.transfer_list, name="transfer_list"),
+    path("complaints/", views.complaint_list, name="complaint_list"),
+    path(
+        "complaints/add/",
+        views.complaint_create,
+        name="complaint_create",
+    ),
+    path(
+        "complaints/<uuid:reference>/",
+        views.complaint_detail,
+        name="complaint_detail",
+    ),
     path(
         "pending-requests/",
         views.pending_requests_dashboard,

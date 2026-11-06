@@ -344,6 +344,95 @@ class HostelOperationsTests(TestCase):
         )
 
 
+class ComplaintSubmissionTests(TestCase):
+    def setUp(self):
+        self.student_user = User.objects.create_user(
+            username="complaint_student",
+            password="testpassword123",
+        )
+        self.student = Student.objects.create(
+            user=self.student_user,
+            student_id="CMP001",
+        )
+        self.other_user = User.objects.create_user(
+            username="other_complaint_student",
+            password="testpassword123",
+        )
+        self.other_student = Student.objects.create(
+            user=self.other_user,
+            student_id="CMP002",
+        )
+
+    def test_student_can_submit_complaint_with_unique_reference_and_open_status(self):
+        self.client.force_login(self.student_user)
+        response = self.client.post(
+            reverse("complaint_create"),
+            {
+                "category": "Maintenance",
+                "description": "The room fan is not working.",
+            },
+        )
+
+        complaint = Complaint.objects.get(student=self.student)
+        self.assertRedirects(
+            response,
+            reverse("complaint_detail", args=[complaint.reference]),
+        )
+        self.assertEqual(complaint.status, Complaint.Status.OPEN)
+        self.assertIsNotNone(complaint.reference)
+
+        second_complaint = Complaint.objects.create(
+            student=self.student,
+            category="Cleaning",
+            description="The room needs cleaning.",
+        )
+        self.assertNotEqual(complaint.reference, second_complaint.reference)
+
+    def test_student_can_list_and_retrieve_their_complaint(self):
+        complaint = Complaint.objects.create(
+            student=self.student,
+            category="Electrical",
+            description="The light needs repair.",
+        )
+        self.client.force_login(self.student_user)
+
+        list_response = self.client.get(reverse("complaint_list"))
+        detail_response = self.client.get(
+            reverse("complaint_detail", args=[complaint.reference])
+        )
+
+        self.assertContains(list_response, str(complaint.reference))
+        self.assertContains(detail_response, "The light needs repair.")
+        self.assertContains(detail_response, "Open")
+
+    def test_student_cannot_retrieve_another_students_complaint(self):
+        complaint = Complaint.objects.create(
+            student=self.other_student,
+            category="Maintenance",
+            description="Private complaint details.",
+        )
+        self.client.force_login(self.student_user)
+
+        response = self.client.get(
+            reverse("complaint_detail", args=[complaint.reference])
+        )
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_anonymous_user_cannot_submit_or_list_complaints(self):
+        create_response = self.client.get(reverse("complaint_create"))
+        list_response = self.client.get(reverse("complaint_list"))
+
+        self.assertRedirects(
+            create_response,
+            f"{reverse('login')}?next={reverse('complaint_create')}",
+        )
+        self.assertRedirects(
+            list_response,
+            f"{reverse('login')}?next={reverse('complaint_list')}",
+        )
+
+
 class StudentCheckInOutTests(TestCase):
     def setUp(self):
         self.warden = User.objects.create_user(

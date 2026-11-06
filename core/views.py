@@ -10,6 +10,7 @@ from django.views.decorators.http import require_POST
 from .forms import (
     AllocationForm,
     BlockForm,
+    ComplaintForm,
     HostelForm,
     RoomForm,
     StudentForm,
@@ -416,6 +417,75 @@ def transfer_create(request):
         request,
         "core/simple_form.html",
         {"form": form, "title": "Request Room Transfer"},
+    )
+
+
+def _student_profile_or_redirect(request):
+    try:
+        return request.user.student_profile
+    except Student.DoesNotExist:
+        messages.error(
+            request,
+            "Your account is not linked to a student profile.",
+        )
+        return None
+
+
+@role_required(User.Role.STUDENT)
+def complaint_create(request):
+    student = _student_profile_or_redirect(request)
+    if student is None:
+        return redirect("dashboard")
+
+    form = ComplaintForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        complaint = form.save(commit=False)
+        complaint.student = student
+        complaint.save()
+        audit("submitted", complaint, request)
+        messages.success(
+            request,
+            f"Your complaint was submitted. Reference: {complaint.reference}",
+        )
+        return redirect("complaint_detail", reference=complaint.reference)
+
+    return render(
+        request,
+        "core/simple_form.html",
+        {"form": form, "title": "Submit Hostel Complaint"},
+    )
+
+
+@role_required(User.Role.STUDENT)
+def complaint_list(request):
+    student = _student_profile_or_redirect(request)
+    if student is None:
+        return redirect("dashboard")
+
+    complaints = Complaint.objects.filter(student=student).order_by(
+        "-created_at"
+    )
+    return render(
+        request,
+        "core/complaint_list.html",
+        {"complaints": complaints},
+    )
+
+
+@role_required(User.Role.STUDENT)
+def complaint_detail(request, reference):
+    student = _student_profile_or_redirect(request)
+    if student is None:
+        return redirect("dashboard")
+
+    complaint = get_object_or_404(
+        Complaint.objects.filter(student=student),
+        reference=reference,
+    )
+    return render(
+        request,
+        "core/complaint_detail.html",
+        {"complaint": complaint},
     )
 
 

@@ -4,7 +4,15 @@ import re
 from django import forms
 from django.core.validators import RegexValidator
 
-from .models import Allocation, Block, Hostel, Room, Student, TransferRequest
+from .models import (
+    Allocation,
+    Block,
+    Complaint,
+    Hostel,
+    Room,
+    Student,
+    TransferRequest,
+)
 
 
 student_id_validator = RegexValidator(
@@ -178,3 +186,15 @@ class TransferRequestForm(forms.ModelForm):
             )
 
         return room
+
+
+class ComplaintForm(forms.ModelForm):
+    category = forms.CharField(max_length=100, strip=True)
+    description = forms.CharField(
+        strip=True,
+        widget=forms.Textarea(attrs={"rows": 5}),
+    )
+
+    class Meta:
+        model = Complaint
+        fields = ["category", "description"]
