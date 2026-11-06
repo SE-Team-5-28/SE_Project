@@ -1,0 +1,288 @@
+{% extends 'core/base.html' %}
+
+{% block title %}
+Pending Requests and Complaints
+{% endblock %}
+
+{% block content %}
+
+<div class="page-heading">
+    <h1>Pending Requests and Complaints</h1>
+</div>
+
+<p>
+    Review room transfer requests and student complaints
+    that require staff attention.
+</p>
+
+
+<!-- Summary cards -->
+
+<div class="grid">
+
+    <div class="card">
+        <span>Pending Transfer Requests</span>
+        <strong>{{ pending_transfer_count }}</strong>
+    </div>
+
+    <div class="card">
+        <span>Unresolved Complaints</span>
+        <strong>{{ unresolved_complaint_count }}</strong>
+    </div>
+
+</div>
+
+
+<!-- Transfer Requests -->
+
+<div class="card">
+
+    <h2>Room Transfer Requests</h2>
+
+    <form method="get">
+
+        <label for="transfer_status">
+            Filter by transfer status:
+        </label>
+
+        <select
+            name="transfer_status"
+            id="transfer_status"
+        >
+
+            <option
+                value="PENDING"
+                {% if transfer_status == "PENDING" %}selected{% endif %}
+            >
+                Pending
+            </option>
+
+            <option
+                value="APPROVED"
+                {% if transfer_status == "APPROVED" %}selected{% endif %}
+            >
+                Approved
+            </option>
+
+            <option
+                value="REJECTED"
+                {% if transfer_status == "REJECTED" %}selected{% endif %}
+            >
+                Rejected
+            </option>
+
+        </select>
+
+        <input
+            type="hidden"
+            name="complaint_status"
+            value="{{ complaint_status }}"
+        >
+
+        <button type="submit" class="button">
+            Apply Filter
+        </button>
+
+    </form>
+
+    <br>
+
+    <div class="table-wrap">
+
+        <table>
+
+            <thead>
+                <tr>
+                    <th>Student ID</th>
+                    <th>Requested Room</th>
+                    <th>Reason</th>
+                    <th>Status</th>
+                    <th>Submitted On</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+                {% for item in transfer_requests %}
+
+                    <tr>
+
+                        <td>
+                            {{ item.student.student_id }}
+                        </td>
+
+                        <td>
+                            {% if item.requested_room %}
+                                {{ item.requested_room }}
+                            {% else %}
+                                Not specified
+                            {% endif %}
+                        </td>
+
+                        <td>
+                            {{ item.reason|truncatechars:80 }}
+                        </td>
+
+                        <td>
+                            {{ item.get_status_display }}
+                        </td>
+
+                        <td>
+                            {{ item.created_at|date:"d M Y, H:i" }}
+                        </td>
+
+                    </tr>
+
+                {% empty %}
+
+                    <tr>
+                        <td colspan="5">
+                            No transfer requests found for this status.
+                        </td>
+                    </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>
+
+
+<!-- Student Complaints -->
+
+<div class="card">
+
+    <h2>Student Complaints</h2>
+
+    <form method="get">
+
+        <input
+            type="hidden"
+            name="transfer_status"
+            value="{{ transfer_status }}"
+        >
+
+        <label for="complaint_status">
+            Filter by complaint status:
+        </label>
+
+        <select
+            name="complaint_status"
+            id="complaint_status"
+        >
+
+            <option
+                value="UNRESOLVED"
+                {% if complaint_status == "UNRESOLVED" %}selected{% endif %}
+            >
+                Unresolved (Open and In Progress)
+            </option>
+
+            <option
+                value="OPEN"
+                {% if complaint_status == "OPEN" %}selected{% endif %}
+            >
+                Open
+            </option>
+
+            <option
+                value="IN_PROGRESS"
+                {% if complaint_status == "IN_PROGRESS" %}selected{% endif %}
+            >
+                In Progress
+            </option>
+
+            <option
+                value="RESOLVED"
+                {% if complaint_status == "RESOLVED" %}selected{% endif %}
+            >
+                Resolved
+            </option>
+
+            <option
+                value="CLOSED"
+                {% if complaint_status == "CLOSED" %}selected{% endif %}
+            >
+                Closed
+            </option>
+
+        </select>
+
+        <button type="submit" class="button">
+            Apply Filter
+        </button>
+
+    </form>
+
+    <br>
+
+    <div class="table-wrap">
+
+        <table>
+
+            <thead>
+                <tr>
+                    <th>Reference</th>
+                    <th>Student ID</th>
+                    <th>Category</th>
+                    <th>Description</th>
+                    <th>Status</th>
+                    <th>Submitted On</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+                {% for complaint in complaints %}
+
+                    <tr>
+
+                        <td>
+                            {{ complaint.reference|truncatechars:12 }}
+                        </td>
+
+                        <td>
+                            {{ complaint.student.student_id }}
+                        </td>
+
+                        <td>
+                            {{ complaint.category }}
+                        </td>
+
+                        <td>
+                            {{ complaint.description|truncatechars:80 }}
+                        </td>
+
+                        <td>
+                            {{ complaint.get_status_display }}
+                        </td>
+
+                        <td>
+                            {{ complaint.created_at|date:"d M Y, H:i" }}
+                        </td>
+
+                    </tr>
+
+                {% empty %}
+
+                    <tr>
+                        <td colspan="6">
+                            No complaints found for this status.
+                        </td>
+                    </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>
+
+{% endblock %}

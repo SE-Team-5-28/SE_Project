@@ -18,6 +18,7 @@ from .models import (
     Allocation,
     AuditLog,
     Block,
+    Complaint,
     Hostel,
     Room,
     Student,
@@ -443,3 +444,49 @@ def transfer_review(request, pk, decision):
     transfer.save(update_fields=["status", "reviewed_by", "reviewed_at"])
     audit(decision, transfer, request)
     return redirect("transfer_list")
+
+
+@login_required
+@staff_required
+def pending_requests_dashboard(request):
+    """Show transfer requests and complaints for hostel staff."""
+    transfer_status = request.GET.get("transfer_status", TransferRequest.Status.PENDING)
+    valid_transfer_statuses = {value for value, _label in TransferRequest.Status.choices}
+    if transfer_status not in valid_transfer_statuses:
+        transfer_status = TransferRequest.Status.PENDING
+
+    transfer_requests = (
+        TransferRequest.objects.select_related("student", "requested_room")
+        .filter(status=transfer_status)
+        .order_by("-created_at")
+    )
+
+    complaint_status = request.GET.get("complaint_status", "UNRESOLVED")
+    valid_complaint_statuses = {value for value, _label in Complaint.Status.choices}
+    if complaint_status == "UNRESOLVED":
+        complaints = Complaint.objects.filter(
+            status__in=[Complaint.Status.OPEN, Complaint.Status.IN_PROGRESS]
+        )
+    elif complaint_status in valid_complaint_statuses:
+        complaints = Complaint.objects.filter(status=complaint_status)
+    else:
+        complaint_status = "UNRESOLVED"
+        complaints = Complaint.objects.filter(
+            status__in=[Complaint.Status.OPEN, Complaint.Status.IN_PROGRESS]
+        )
+
+    complaints = complaints.select_related("student").order_by("-created_at")
+
+    context = {
+        "transfer_requests": transfer_requests,
+        "complaints": complaints,
+        "transfer_status": transfer_status,
+        "complaint_status": complaint_status,
+        "pending_transfer_count": TransferRequest.objects.filter(
+            status=TransferRequest.Status.PENDING
+        ).count(),
+        "unresolved_complaint_count": Complaint.objects.filter(
+            status__in=[Complaint.Status.OPEN, Complaint.Status.IN_PROGRESS]
+        ).count(),
+    }
+    return render(request, "core/pending_requests.html", context)

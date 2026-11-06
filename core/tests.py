@@ -13,6 +13,7 @@ from .models import (
     Allocation,
     AuditLog,
     Block,
+    Complaint,
     Hostel,
     Room,
     Student,
@@ -870,3 +871,97 @@ class InputValidationSecurityTests(TestCase):
                 student_id="' OR '1'='1"
             ).exists()
         )
+
+
+class PendingRequestsDashboardTests(TestCase):
+    def setUp(self):
+        self.warden = User.objects.create_user(
+            username="issue17_warden",
+            password="testpassword123",
+            is_staff=True,
+        )
+        self.student = Student.objects.create(
+            student_id="ISSUE17-001",
+            full_name="Issue 17 Test Student",
+        )
+        self.hostel = Hostel.objects.create(name="Issue 17 Hostel")
+        self.block = Block.objects.create(hostel=self.hostel, name="A")
+        self.room = Room.objects.create(
+            block=self.block,
+            number="101",
+            room_code="ISSUE17-101",
+            capacity=2,
+        )
+        TransferRequest.objects.create(
+            student=self.student,
+            requested_room=self.room,
+            reason="Request to change room",
+            status=TransferRequest.Status.PENDING,
+        )
+        TransferRequest.objects.create(
+            student=self.student,
+            requested_room=self.room,
+            reason="Previously approved request",
+            status=TransferRequest.Status.APPROVED,
+        )
+        Complaint.objects.create(
+            student=self.student,
+            category="Maintenance",
+            description="The room fan is not working.",
+            status=Complaint.Status.OPEN,
+        )
+        Complaint.objects.create(
+            student=self.student,
+            category="Electrical",
+            description="The light needs repair.",
+            status=Complaint.Status.IN_PROGRESS,
+        )
+        Complaint.objects.create(
+            student=self.student,
+            category="Cleaning",
+            description="The room was not cleaned.",
+            status=Complaint.Status.RESOLVED,
+        )
+        self.client.force_login(self.warden)
+
+    def test_dashboard_displays_pending_transfers(self):
+        response = self.client.get(reverse("pending_requests"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Request to change room")
+        self.assertNotContains(response, "Previously approved request")
+
+    def test_dashboard_displays_unresolved_complaints(self):
+        response = self.client.get(reverse("pending_requests"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "The room fan is not working.")
+        self.assertContains(response, "The light needs repair.")
+        self.assertNotContains(response, "The room was not cleaned.")
+
+    def test_transfer_status_filter_displays_approved_requests(self):
+        response = self.client.get(
+            reverse("pending_requests"), {"transfer_status": "APPROVED"}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Previously approved request")
+        self.assertNotContains(response, "Request to change room")
+
+    def test_complaint_status_filter_displays_resolved_complaints(self):
+        response = self.client.get(
+            reverse("pending_requests"), {"complaint_status": "RESOLVED"}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "The room was not cleaned.")
+        self.assertNotContains(response, "The room fan is not working.")
+
+    def test_student_cannot_access_dashboard(self):
+        student_user = User.objects.create_user(
+            username="issue17_student", password="testpassword123"
+        )
+        self.client.force_login(student_user)
+        response = self.client.get(reverse("pending_requests"))
+        self.assertEqual(response.status_code, 302)
+
+    def test_anonymous_user_cannot_access_dashboard(self):
+        self.client.logout()
+        response = self.client.get(reverse("pending_requests"))
+        self.assertEqual(response.status_code, 302)
