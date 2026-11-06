@@ -2,6 +2,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.core.exceptions import ValidationError
 from django.db import transaction
+from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
@@ -202,6 +203,53 @@ def allocation_list(request):
         request,
         "core/allocation_list.html",
         {"allocations": allocations},
+    )
+
+
+@role_required(
+    User.Role.WARDEN,
+    User.Role.HOSTEL_ADMIN,
+    User.Role.SYSTEM_ADMIN,
+)
+def occupancy_report(request):
+    hostels = list(Hostel.objects.all())
+    summaries = {
+        hostel.pk: {
+            "hostel": hostel,
+            "capacity": 0,
+            "occupied": 0,
+            "vacancies": 0,
+        }
+        for hostel in hostels
+    }
+
+    room_summaries = Room.objects.values(
+        "block__hostel_id",
+        "pk",
+        "capacity",
+    ).annotate(
+        occupied=Count(
+            "allocations",
+            filter=Q(allocations__status=Allocation.Status.ACTIVE),
+        ),
+    )
+
+    for room in room_summaries:
+        summary = summaries[room["block__hostel_id"]]
+        capacity = room["capacity"]
+        occupied = room["occupied"]
+        summary["capacity"] += capacity
+        summary["occupied"] += occupied
+        summary["vacancies"] += max(capacity - occupied, 0)
+
+    totals = {
+        key: sum(summary[key] for summary in summaries.values())
+        for key in ("capacity", "occupied", "vacancies")
+    }
+    return render(
+        request,
+        "core/occupancy_report.html",
+        {"summaries": summaries.values(), "totals": totals},
     )
 
 
