@@ -5,7 +5,7 @@ from django.core.exceptions import ValidationError
 from django.core.management import call_command
 from django.db import IntegrityError, connection, transaction
 from django.db.migrations.executor import MigrationExecutor
-from django.test import TestCase, TransactionTestCase
+from django.test import SimpleTestCase, TestCase, TransactionTestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
@@ -66,6 +66,33 @@ class AuthenticationWorkflowTests(TestCase):
         self.assertRedirects(
             self.client.get(reverse("dashboard")),
             f"{reverse('login')}?next={reverse('dashboard')}",
+        )
+
+
+@override_settings(
+    SECURE_SSL_REDIRECT=True,
+    SECURE_PROXY_SSL_HEADER=("HTTP_X_FORWARDED_PROTO", "https"),
+)
+class HttpsProxySecurityTests(SimpleTestCase):
+    def test_forwarded_https_request_is_not_redirected_again(self):
+        response = self.client.get(
+            reverse("login"),
+            HTTP_HOST="localhost",
+            HTTP_X_FORWARDED_PROTO="https",
+        )
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_http_request_is_redirected_to_https(self):
+        response = self.client.get(
+            reverse("login"),
+            HTTP_HOST="localhost",
+        )
+
+        self.assertEqual(response.status_code, 301)
+        self.assertEqual(
+            response["Location"],
+            f"https://localhost{reverse('login')}",
         )
 
 
