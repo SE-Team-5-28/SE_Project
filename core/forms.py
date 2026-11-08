@@ -92,8 +92,15 @@ class RoomForm(forms.ModelForm):
 
     def clean_number(self):
         value = self.cleaned_data["number"].strip()
+
         if not value:
             raise forms.ValidationError("Room number cannot be empty.")
+
+        if not re.fullmatch(r"[A-Za-z0-9_-]+", value):
+            raise forms.ValidationError(
+                "Room number must contain only letters, numbers, hyphens or underscores."
+            )
+
         return value
 
 
