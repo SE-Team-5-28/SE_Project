@@ -333,7 +333,8 @@ def check_in(request, pk):
     audit("checked_in", allocation, request, {"room": str(room)})
     messages.success(
         request,
-        f"{allocation.student.full_name} has been checked in successfully.",
+        f"{allocation.student.full_name} has been checked in to "
+        f"Room {room.room_number} successfully.",
     )
     return redirect("allocation_list")
 
@@ -371,7 +372,8 @@ def check_out(request, pk):
     audit("checked_out", allocation, request, {"room": str(allocation.room)})
     messages.success(
         request,
-        f"{allocation.student.full_name} has been checked out successfully.",
+        f"{allocation.student.full_name} has been checked out from "
+        f"Room {allocation.room.room_number} successfully.",
     )
     return redirect("allocation_list")
 
