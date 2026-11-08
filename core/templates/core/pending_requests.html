@@ -98,6 +98,7 @@ Pending Requests and Complaints
                     <th>Reason</th>
                     <th>Status</th>
                     <th>Submitted On</th>
+                    <th>Action</th>
                 </tr>
             </thead>
 
@@ -131,12 +132,44 @@ Pending Requests and Complaints
                             {{ item.created_at|date:"d M Y, H:i" }}
                         </td>
 
+                        <td>
+                            {% if item.status == "PENDING" %}
+
+                                <form
+                                    method="post"
+                                    action="{% url 'transfer_review' item.pk 'approve' %}"
+                                    style="display: inline;"
+                                >
+                                    {% csrf_token %}
+
+                                    <button type="submit" class="button">
+                                        Approve
+                                    </button>
+                                </form>
+
+                                <form
+                                    method="post"
+                                    action="{% url 'transfer_review' item.pk 'reject' %}"
+                                    style="display: inline;"
+                                >
+                                    {% csrf_token %}
+
+                                    <button type="submit" class="button">
+                                        Reject
+                                    </button>
+                                </form>
+
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+
                     </tr>
 
                 {% empty %}
 
                     <tr>
-                        <td colspan="5">
+                        <td colspan="6">
                             No transfer requests found for this status.
                         </td>
                     </tr>
@@ -286,3 +319,4 @@ Pending Requests and Complaints
 </div>
 
 {% endblock %}
+```
