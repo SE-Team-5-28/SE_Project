@@ -135,7 +135,10 @@ class AllocationForm(forms.ModelForm):
             ).exclude(pk=self.instance.pk).count()
 
             if occupied >= room.capacity:
-                self.add_error("room", "This room has no available space.")
+                self.add_error(
+                    "room",
+                    f"This room is full ({occupied}/{room.capacity} occupants).",
+                )
 
         return cleaned
 
