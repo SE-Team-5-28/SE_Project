@@ -5,12 +5,13 @@ from django.db import transaction
 from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_http_methods, require_POST
 
 from .forms import (
     AllocationForm,
     BlockForm,
     ComplaintForm,
+    ComplaintUpdateForm,
     HostelForm,
     RoomForm,
     StudentForm,
@@ -488,6 +489,31 @@ def complaint_detail(request, reference):
         request,
         "core/complaint_detail.html",
         {"complaint": complaint},
+    )
+
+
+@role_required(
+    User.Role.WARDEN,
+    User.Role.HOSTEL_ADMIN,
+    User.Role.SYSTEM_ADMIN,
+)
+@require_http_methods(["GET", "POST"])
+def complaint_update(request, reference):
+    complaint = get_object_or_404(Complaint, reference=reference)
+    form = ComplaintUpdateForm(
+        request.POST or None,
+        instance=complaint,
+    )
+    if request.method == "POST" and form.is_valid():
+        complaint = form.save()
+        audit("updated", complaint, request, {"status": complaint.status})
+        messages.success(request, "Complaint updated.")
+        return redirect("pending_requests")
+
+    return render(
+        request,
+        "core/simple_form.html",
+        {"form": form, "title": "Update Complaint"},
     )
 
 

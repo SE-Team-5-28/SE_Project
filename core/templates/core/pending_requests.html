@@ -264,7 +264,9 @@ Pending Requests and Complaints
                     <th>Category</th>
                     <th>Description</th>
                     <th>Status</th>
+                    <th>Staff remarks</th>
                     <th>Submitted On</th>
+                    <th>Action</th>
                 </tr>
             </thead>
 
@@ -295,7 +297,20 @@ Pending Requests and Complaints
                         </td>
 
                         <td>
+                            {{ complaint.remarks|truncatechars:80|default:"—" }}
+                        </td>
+
+                        <td>
                             {{ complaint.created_at|date:"d M Y, H:i" }}
+                        </td>
+
+                        <td>
+                            <a
+                                class="button"
+                                href="{% url 'complaint_update' complaint.reference %}"
+                            >
+                                Update
+                            </a>
                         </td>
 
                     </tr>
@@ -303,7 +318,7 @@ Pending Requests and Complaints
                 {% empty %}
 
                     <tr>
-                        <td colspan="6">
+                        <td colspan="8">
                             No complaints found for this status.
                         </td>
                     </tr>

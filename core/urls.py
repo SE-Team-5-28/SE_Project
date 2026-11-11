@@ -56,6 +56,11 @@ urlpatterns = [
         name="complaint_create",
     ),
     path(
+        "complaints/<uuid:reference>/update/",
+        views.complaint_update,
+        name="complaint_update",
+    ),
+    path(
         "complaints/<uuid:reference>/",
         views.complaint_detail,
         name="complaint_detail",
