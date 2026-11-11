@@ -525,6 +525,125 @@ class ComplaintSubmissionTests(TestCase):
         )
 
 
+class ComplaintUpdateTests(TestCase):
+    def setUp(self):
+        self.student_user = User.objects.create_user(
+            username="complaint_update_student",
+            password="testpassword123",
+        )
+        self.student = Student.objects.create(
+            user=self.student_user,
+            student_id="CMP003",
+        )
+        self.complaint = Complaint.objects.create(
+            student=self.student,
+            category="Maintenance",
+            description="The room fan is not working.",
+        )
+        self.update_url = reverse(
+            "complaint_update",
+            args=[self.complaint.reference],
+        )
+
+    def test_warden_and_administrators_can_update_status_and_remarks(self):
+        for index, role in enumerate(
+            (
+                UserRole.Role.WARDEN,
+                UserRole.Role.HOSTEL_ADMIN,
+                UserRole.Role.SYSTEM_ADMIN,
+            )
+        ):
+            with self.subTest(role=role):
+                staff_user = User.objects.create_user(
+                    username=f"complaint_staff_{index}",
+                    password="testpassword123",
+                    is_staff=True,
+                )
+                UserRole.objects.create(user=staff_user, role=role)
+                self.client.force_login(staff_user)
+
+                response = self.client.post(
+                    self.update_url,
+                    {
+                        "status": Complaint.Status.RESOLVED,
+                        "remarks": f"Resolved by {role}.",
+                    },
+                )
+
+                self.assertRedirects(response, reverse("pending_requests"))
+                self.complaint.refresh_from_db()
+                self.assertEqual(
+                    self.complaint.status,
+                    Complaint.Status.RESOLVED,
+                )
+                self.assertEqual(
+                    self.complaint.remarks,
+                    f"Resolved by {role}.",
+                )
+
+    def test_student_cannot_update_complaint_by_direct_post(self):
+        self.client.force_login(self.student_user)
+
+        response = self.client.post(
+            self.update_url,
+            {
+                "status": Complaint.Status.RESOLVED,
+                "remarks": "Unauthorized update.",
+            },
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.complaint.refresh_from_db()
+        self.assertEqual(self.complaint.status, Complaint.Status.OPEN)
+        self.assertEqual(self.complaint.remarks, "")
+
+    def test_anonymous_user_cannot_update_complaint_by_direct_post(self):
+        response = self.client.post(
+            self.update_url,
+            {
+                "status": Complaint.Status.RESOLVED,
+                "remarks": "Anonymous update.",
+            },
+        )
+
+        self.assertRedirects(
+            response,
+            f"{reverse('login')}?next={self.update_url}",
+        )
+        self.complaint.refresh_from_db()
+        self.assertEqual(self.complaint.status, Complaint.Status.OPEN)
+        self.assertEqual(self.complaint.remarks, "")
+
+    def test_updated_status_and_remarks_are_visible_to_student(self):
+        warden = User.objects.create_user(
+            username="complaint_update_warden",
+            password="testpassword123",
+            is_staff=True,
+        )
+        UserRole.objects.create(user=warden, role=UserRole.Role.WARDEN)
+        self.client.force_login(warden)
+        self.client.post(
+            self.update_url,
+            {
+                "status": Complaint.Status.IN_PROGRESS,
+                "remarks": "A technician has been assigned.",
+            },
+        )
+
+        self.client.force_login(self.student_user)
+        detail_response = self.client.get(
+            reverse("complaint_detail", args=[self.complaint.reference])
+        )
+        list_response = self.client.get(reverse("complaint_list"))
+
+        self.assertContains(detail_response, "In Progress")
+        self.assertContains(
+            detail_response,
+            "A technician has been assigned.",
+        )
+        self.assertContains(list_response, "In Progress")
+
+
 class StudentCheckInOutTests(TestCase):
     def setUp(self):
         self.warden = User.objects.create_user(

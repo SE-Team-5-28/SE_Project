@@ -208,3 +208,12 @@ class ComplaintForm(forms.ModelForm):
     class Meta:
         model = Complaint
         fields = ["category", "description"]
+
+
+class ComplaintUpdateForm(forms.ModelForm):
+    class Meta:
+        model = Complaint
+        fields = ["status", "remarks"]
+        widgets = {
+            "remarks": forms.Textarea(attrs={"rows": 5}),
+        }
