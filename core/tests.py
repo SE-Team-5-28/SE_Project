@@ -1,4 +1,5 @@
 from io import StringIO
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
@@ -20,7 +21,7 @@ from .models import (
     TransferRequest,
     UserRole,
 )
-from .services import allocate_student
+from .services import allocate_student, transfer_student
 
 User = get_user_model()
 
@@ -359,6 +360,11 @@ class HostelOperationsTests(TestCase):
         transfer = TransferRequest.objects.get(student=self.student)
 
         self.client.force_login(self.staff)
+        response = self.client.get(reverse("transfer_list"))
+        self.assertContains(
+            response,
+            reverse("transfer_review", args=[transfer.pk, "approve"]),
+        )
         response = self.client.post(
             reverse("transfer_review", args=[transfer.pk, "approve"])
         )
@@ -369,6 +375,65 @@ class HostelOperationsTests(TestCase):
             self.student.allocations.get(status=Allocation.Status.ACTIVE).room,
             destination,
         )
+        self.assertEqual(
+            self.student.allocations.get(status=Allocation.Status.COMPLETED).room,
+            self.room,
+        )
+        self.assertEqual(self.room.occupied_count, 0)
+        self.assertEqual(destination.occupied_count, 1)
+        self.student.refresh_from_db()
+        self.assertEqual(self.student.room_number, destination.room_number)
+
+    def test_approval_rejects_full_destination_without_partial_transfer(self):
+        destination = Room.objects.create(
+            block=self.block,
+            number="102",
+            room_code="NORTH-A-102",
+            capacity=1,
+        )
+        old_allocation = Allocation.objects.create(
+            student=self.student,
+            room=self.room,
+        )
+        self.student.hostel_name = self.hostel.name
+        self.student.room_number = self.room.room_number
+        self.student.save(update_fields=["hostel_name", "room_number"])
+        transfer = TransferRequest.objects.create(
+            student=self.student,
+            requested_room=destination,
+            reason="Accessibility",
+        )
+
+        other_user = User.objects.create_user(
+            username="destination_occupant",
+            password="testpassword123",
+        )
+        other_student = Student.objects.create(
+            user=other_user,
+            student_id="PES103",
+        )
+        Allocation.objects.create(student=other_student, room=destination)
+
+        self.client.force_login(self.staff)
+        response = self.client.post(
+            reverse("transfer_review", args=[transfer.pk, "approve"])
+        )
+
+        self.assertRedirects(response, reverse("transfer_list"))
+        transfer.refresh_from_db()
+        old_allocation.refresh_from_db()
+        self.student.refresh_from_db()
+        self.assertEqual(transfer.status, TransferRequest.Status.PENDING)
+        self.assertEqual(old_allocation.status, Allocation.Status.ACTIVE)
+        self.assertEqual(self.room.occupied_count, 1)
+        self.assertEqual(destination.occupied_count, 1)
+        self.assertFalse(
+            Allocation.objects.filter(
+                student=self.student,
+                room=destination,
+            ).exists()
+        )
+        self.assertEqual(self.student.room_number, self.room.room_number)
 
 
 class ComplaintSubmissionTests(TestCase):
@@ -879,6 +944,33 @@ class AllocationServiceTests(TestCase):
             "This student already has an active allocation.",
         ):
             allocate_student(self.student_one.pk, other_room.pk)
+
+    @patch(
+        "core.services.allocate_student",
+        side_effect=ValidationError("Allocation failed."),
+    )
+    def test_transfer_rolls_back_old_allocation_when_new_allocation_fails(
+        self,
+        _allocate_student,
+    ):
+        old_allocation = Allocation.objects.create(
+            student=self.student_one,
+            room=self.room,
+        )
+        destination = Room.objects.create(
+            block=self.block,
+            number="102",
+            room_code="SERVICE-102",
+            capacity=1,
+        )
+
+        with self.assertRaisesMessage(ValidationError, "Allocation failed."):
+            transfer_student(self.student_one.pk, destination.pk)
+
+        old_allocation.refresh_from_db()
+        self.assertEqual(old_allocation.status, Allocation.Status.ACTIVE)
+        self.assertEqual(self.room.occupied_count, 1)
+        self.assertEqual(destination.occupied_count, 0)
 
 
 from django.test import TestCase

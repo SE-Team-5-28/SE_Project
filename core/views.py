@@ -28,7 +28,7 @@ from .models import (
     User,
     get_user_role,
 )
-from .services import allocate_student
+from .services import allocate_student, transfer_student
 from .permissions import role_required
 
 
@@ -509,44 +509,23 @@ def transfer_review(request, pk, decision):
         return redirect("transfer_list")
 
     if decision == "approve":
-        room = transfer.requested_room
-        if room is None or room.available_spaces <= 0:
+        if transfer.requested_room_id is None:
             messages.error(
                 request,
                 "The requested room is no longer available.",
             )
             return redirect("transfer_list")
 
-        room = get_object_or_404(
-            Room.objects.select_for_update(),
-            pk=room.pk,
-        )
         try:
-            with transaction.atomic():
-                old_allocation = Allocation.objects.filter(
-                    student=transfer.student,
-                    status=Allocation.Status.ACTIVE,
-                ).first()
-                if old_allocation:
-                    old_allocation.status = Allocation.Status.COMPLETED
-                    old_allocation.check_out_date = timezone.localdate()
-                    old_allocation.save(
-                        update_fields=[
-                            "status",
-                            "check_out_date",
-                            "active_student_guard",
-                            "is_active",
-                        ]
-                    )
-
-                new_allocation = allocate_student(
-                    student_id=transfer.student_id,
-                    room_id=room.pk,
-                )
+            new_allocation = transfer_student(
+                student_id=transfer.student_id,
+                room_id=transfer.requested_room_id,
+            )
         except ValidationError as exc:
             messages.error(request, str(exc))
             return redirect("transfer_list")
 
+        room = new_allocation.room
         audit("allocated", new_allocation, request, {"room": str(room)})
         transfer.student.hostel_name = room.block.hostel.name
         transfer.student.room_number = room.room_number

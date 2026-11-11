@@ -5,6 +5,7 @@
 | Manage hostels, blocks and rooms (#24) | `Hostel`, `Block`, `Room` models and staff CRUD views | `HostelOperationsTests`, Django system check |
 | Allocate eligible student (#25) | Capacity validation, one active allocation constraint, allocation screen | `test_staff_can_allocate_available_room_and_audit_action`, `test_full_room_cannot_receive_second_allocation` |
 | Submit room transfer requests (#37) | `TransferRequest`, student form, staff review workflow | `test_student_can_submit_and_staff_can_approve_transfer` |
+| Complete approved room transfers (#39) | Atomic allocation swap, locked destination-capacity check, and staff approval action | `test_student_can_submit_and_staff_can_approve_transfer`, `test_approval_rejects_full_destination_without_partial_transfer`, `test_transfer_rolls_back_old_allocation_when_new_allocation_fails` |
 | Responsive base layout and role dashboards (#33) | `base.html`, responsive CSS, staff/student navigation | Template smoke coverage through Django tests |
 | Secure hashing and sessions (#19) | Django password hasher, HTTP-only/SameSite session cookies, CSRF middleware | Existing login tests plus `manage.py check --deploy` in production configuration |
 | Audit administrative actions (#18) | Immutable read-only `AuditLog` admin and audit helper | Allocation and transfer tests assert audit records |
