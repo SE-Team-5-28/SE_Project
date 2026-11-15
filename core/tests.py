@@ -659,6 +659,51 @@ class HostelOperationsTests(TestCase):
         self.assertEqual(transfer_out_log.details["to_room"], str(destination))
         self.assertEqual(transfer_in_log.details["from_room"], str(self.room))
 
+    def test_staff_can_reject_transfer_without_changing_allocation(self):
+        destination = Room.objects.create(
+            block=self.block,
+            number="102",
+            room_code="NORTH-A-102",
+            capacity=1,
+        )
+        old_allocation = Allocation.objects.create(
+            student=self.student,
+            room=self.room,
+        )
+        transfer = TransferRequest.objects.create(
+            student=self.student,
+            requested_room=destination,
+            reason="Accessibility",
+        )
+
+        self.client.force_login(self.staff)
+        started_at = timezone.now()
+        response = self.client.post(
+            reverse("transfer_review", args=[transfer.pk, "reject"])
+        )
+
+        self.assertRedirects(response, reverse("transfer_list"))
+        transfer.refresh_from_db()
+        old_allocation.refresh_from_db()
+        self.assertEqual(transfer.status, TransferRequest.Status.REJECTED)
+        self.assertEqual(transfer.reviewed_by, self.staff)
+        self.assertIsNotNone(transfer.reviewed_at)
+        self.assertGreaterEqual(transfer.reviewed_at, started_at)
+        self.assertLessEqual(transfer.reviewed_at, timezone.now())
+        self.assertEqual(old_allocation.status, Allocation.Status.ACTIVE)
+        self.assertEqual(self.room.occupied_count, 1)
+        self.assertEqual(destination.occupied_count, 0)
+        self.assertFalse(
+            Allocation.objects.filter(
+                student=self.student,
+                room=destination,
+            ).exists()
+        )
+
+        self.client.force_login(self.student_user)
+        response = self.client.get(reverse("my_transfer_requests"))
+        self.assertContains(response, transfer.get_status_display())
+
     def test_student_transfer_history_only_contains_own_requests(self):
         own_request = TransferRequest.objects.create(
             student=self.student,
