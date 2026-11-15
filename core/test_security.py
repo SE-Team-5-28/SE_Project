@@ -26,7 +26,8 @@ SETTINGS_PROBE = (
     "'session_cookie_age': s.SESSION_COOKIE_AGE, "
     "'expire_at_browser_close': s.SESSION_EXPIRE_AT_BROWSER_CLOSE, "
     "'save_every_request': s.SESSION_SAVE_EVERY_REQUEST, "
-    "'proxy_ssl_header': s.SECURE_PROXY_SSL_HEADER"
+    "'proxy_ssl_header': s.SECURE_PROXY_SSL_HEADER, "
+    "'use_x_forwarded_host': s.USE_X_FORWARDED_HOST"
     "}))"
 )
 
@@ -182,8 +183,9 @@ class ProductionSettingsTests(SimpleTestCase):
         self.assertTrue(config["expire_at_browser_close"])
         self.assertTrue(config["save_every_request"])
         self.assertIsNone(config["proxy_ssl_header"])
+        self.assertFalse(config["use_x_forwarded_host"])
 
-    def test_proxy_ssl_header_is_trusted_only_when_explicitly_enabled(self):
+    def test_proxy_headers_are_trusted_only_when_explicitly_enabled(self):
         test_only_key = (
             "test-only-settings-probe-" + get_random_string(60)
         )
@@ -195,3 +197,46 @@ class ProductionSettingsTests(SimpleTestCase):
             config["proxy_ssl_header"],
             ["HTTP_X_FORWARDED_PROTO", "https"],
         )
+        self.assertTrue(config["use_x_forwarded_host"])
+
+
+class HttpsDeploymentConfigTests(SimpleTestCase):
+    def test_nginx_terminates_tls_and_sets_trusted_proxy_headers(self):
+        nginx_config = (PROJECT_ROOT / "deploy" / "nginx.conf").read_text()
+
+        for directive in (
+            "listen 443 ssl http2;",
+            "ssl_protocols TLSv1.2 TLSv1.3;",
+            "ssl_certificate /etc/letsencrypt/live/hostel.example.edu/fullchain.pem;",
+            "ssl_certificate_key /etc/letsencrypt/live/hostel.example.edu/privkey.pem;",
+            "proxy_set_header Host $host;",
+            "proxy_set_header X-Forwarded-Host $host;",
+            "proxy_set_header X-Forwarded-Proto https;",
+            "proxy_pass http://127.0.0.1:8000;",
+            "location ^~ /.well-known/acme-challenge/",
+            "return 301 https://hostel.example.edu$request_uri;",
+        ):
+            with self.subTest(directive=directive):
+                self.assertIn(directive, nginx_config)
+
+    def test_systemd_keeps_the_application_server_on_loopback(self):
+        service_config = (
+            PROJECT_ROOT / "deploy" / "hostel-management.service"
+        ).read_text()
+
+        self.assertIn("--bind 127.0.0.1:8000", service_config)
+        self.assertNotIn("--bind 0.0.0.0:8000", service_config)
+
+    def test_deployment_guide_covers_proxy_trust_and_certificate_lifecycle(self):
+        deployment_guide = (PROJECT_ROOT / "deploy" / "README.md").read_text()
+
+        for requirement in (
+            "DJANGO_TRUST_PROXY_SSL_HEADER=True",
+            "certbot certonly --webroot",
+            "certbot renew --dry-run",
+            "nginx -t",
+            "curl -I http://",
+            "curl -I https://",
+        ):
+            with self.subTest(requirement=requirement):
+                self.assertIn(requirement, deployment_guide)
