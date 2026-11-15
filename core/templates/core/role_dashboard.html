@@ -1,42 +1,41 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Hostel Management - {{ page_title }}</title>
-</head>
-<body>
-    <h1>Hostel Management System</h1>
+{% extends 'core/base.html' %}
 
-    <h2>{{ page_title }}</h2>
+{% block title %}{{ page_title }}{% endblock %}
 
-    <p>Welcome, {{ request.user.username }}.</p>
-    <p>Your role: {{ role_label }}</p>
+{% block content %}
+<div class="page-heading">
+    <div>
+        <h1>{{ page_title }}</h1>
+        <p>Welcome, {{ request.user.username }}. Your role is {{ role_label }}.</p>
+        <p>{{ dashboard_intro }}</p>
+    </div>
+</div>
 
-    {% if user_role == "STUDENT" %}
-        <section>
-            <h3>Student Access</h3>
-            <p>You are accessing the system as a student.</p>
-        </section>
+{% if profile_notice %}
+    <div class="message warning" role="status">{{ profile_notice }}</div>
+{% endif %}
 
-    {% elif user_role == "WARDEN" %}
-        <section>
-            <h3>Warden Access</h3>
-            <p>You are accessing the system as a warden.</p>
-        </section>
+<section aria-labelledby="dashboard-summary">
+    <h2 id="dashboard-summary">At a glance</h2>
+    <div class="grid">
+        {% for metric in dashboard_metrics %}
+            <div class="card metric-card">
+                <span>{{ metric.label }}</span>
+                <strong>{{ metric.value }}</strong>
+            </div>
+        {% endfor %}
+    </div>
+</section>
 
-    {% elif user_role == "HOSTEL_ADMIN" or user_role == "SYSTEM_ADMIN" %}
-        <section>
-            <h3>Administrator Access</h3>
-            <p>You are accessing the system as an administrator.</p>
-        </section>
-    {% endif %}
-
-    <p><a href="{% url 'dashboard' %}">Return to main dashboard</a></p>
-
-    <form method="post" action="{% url 'logout' %}">
-        {% csrf_token %}
-        <button type="submit">Log out</button>
-    </form>
-</body>
-</html>
+<section aria-labelledby="dashboard-actions">
+    <h2 id="dashboard-actions">Quick links</h2>
+    <div class="grid action-grid">
+        {% for action in dashboard_actions %}
+            <a class="card action-card" href="{{ action.url }}">
+                <strong>{{ action.label }}</strong>
+                <span>{{ action.description }}</span>
+            </a>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

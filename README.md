@@ -1,156 +1,184 @@
 # Hostel Management System
 
-## Project Overview
+A Django web application for managing student hostel records, hostels, blocks,
+rooms, allocations, room transfers, complaints, occupancy reports, and audit
+events. It provides role-aware student, warden, and administrator screens.
 
-The Hostel Management System is a web-based system designed to manage student hostel records, hostel and room information, room allocation, occupancy, room transfer requests, complaints, and administrative reporting.
+## Team
 
-The system is intended to provide role-based access for different users, including students, wardens, hostel administrators, and system administrators.
-
-## Team Members
-
-| Name           | SRN           |
-| -------------- | ------------- |
-| R Agilesh      | PES2UG24CS385 |
-| R G Nithik     | PES2UG24CS386 |
+| Name | SRN |
+| --- | --- |
+| R Agilesh | PES2UG24CS385 |
+| R G Nithik | PES2UG24CS386 |
 | R Muralidharan | PES2UG24CS387 |
-| R Pooja        | PES2UG24CS388 |
+| R Pooja | PES2UG24CS388 |
 
-## Key Features
+## Current scope
 
-* User authentication and role-based access control
-* Student profile and hostel record management
-* Hostel, block, and room management
-* Room allocation and occupancy management
-* Student check-in and check-out
-* Room transfer requests and approval/rejection
-* Complaint registration and status tracking
-* Occupancy and vacancy reports
-* Pending transfer and unresolved complaint reports
-* Audit logging
-* Search and retrieval of hostel information
+Implemented workflows include authentication and role checks, student and
+hostel record management, room allocation and check-in/check-out, student
+transfer requests with staff review, complaint submission and updates,
+occupancy and pending-request reports, and audit-log viewing.
 
-## User Roles
+The application is a server-rendered Django site, not a public JSON API.
+University-wide academic administration, payment processing, external
+notifications, and integrations are outside the current implementation.
+For documented differences from the submitted design and test plan, see
+[Architecture and design deviations](docs/architecture-deviations.md).
 
-The system defines the following user classes:
+## Requirements
 
-* Student – Accesses relevant hostel information and submits requests/complaints.
-* Warden – Manages hostel-related operations and student requests.
-* Hostel Administrator – Handles hostel, room, allocation, and reporting operations.
-* System Administrator – Manages system-level administration and access.
-
-## Prerequisites
-- Python 3
-- MySQL Server
+- Python 3.10 or later (the CI workflow currently runs Python 3.12)
 - Git
+- SQLite for the default local setup; no separate database server is needed
+- A MySQL server only if you choose the optional MySQL configuration
 
-## Setup
-1. Clone the repository.
-2. Create and activate a Python virtual environment.
-3. Install dependencies using `pip install -r requirements.txt`.
-4. Create the MySQL database `hms_db`.
-5. Copy `.env.example` to `.env`.
-6. Configure your local database credentials and Django secret key.
-7. Run database migrations using `python manage.py migrate`.
-8. Start the development server using `python manage.py runserver`.
+## Local setup
 
-## Environment Configuration
-See `.env.example` for the required environment variable names.
-Never commit `.env` or real credentials to Git.
+Clone the repository and create and activate a virtual environment:
 
-## Database
-The project uses MySQL through Django's MySQL database backend.
-
-The SRS defines the system scope, functional requirements, non-functional requirements, security requirements, user roles, interfaces, constraints, assumptions, and requirements traceability.
-
-The Software Test Plan defines the planned test levels, test types, test cases, test environment, testing responsibilities, test metrics, and requirements-to-test-case traceability.
-
-## Technology
-
-The following is the proposed technology environment:
-
-* Frontend: Web-based user interface
-* Backend: Python Django/Flask or PHP Laravel
-* Database: Relational database such as MySQL
-* Communication: HTTPS/TLS
-* Deployment: Networked server environment
-
-The final implementation technology will be reflected here as development progresses.
-
-## Testing
-
-The project test plan covers:
-
-* Unit Testing
-* Integration Testing
-* System Testing
-* User Acceptance Testing
-* Functional Testing
-* Regression Testing
-* Performance Testing
-* Reliability Testing
-* Data Integrity Testing
-* Usability Testing
-* Recovery Testing
-* Security Testing
-
-Test cases are mapped to the functional, non-functional, and security requirements defined in the SRS.
-
-## Project Status
-
-Current Phase: Iterative implementation and verification
-
-### Completed Documentation
-
-* Software Requirements Specification
-* Software Test Plan
-
-### Implemented in the current baseline
-
-* Normalized hostel, block, room, allocation, transfer, and audit records
-* Staff-only management screens with capacity and duplicate-allocation validation
-* Student transfer submission and staff approval/rejection workflow
-* Responsive shared layout and role-aware dashboards
-* Secure session/cookie defaults and production HTTPS deployment templates
-
-### Planned
-
-* System architecture and design
-* Implementation
-* Unit and integration testing
-* System validation
-* CI/CD pipeline
-* Security validation
-* Final project documentation
-
-## Repository Structure
-
-```text
-Hostel-Management-System/
-│
-├── README.md
-│
-└── docs/
-    ├── SRS.pdf
-    └── Test_Plan.pdf
+```powershell
+git clone https://github.com/SE-Team-5-28/SE_Project.git
+Set-Location SE_Project
+python -m venv .venv
+.venv\Scripts\Activate.ps1
 ```
 
-## Project Scope
+On macOS or Linux, activate it with:
 
-The system focuses on hostel record management, room management, room allocation, occupancy, transfers, complaints, and administrative reporting.
-
-## Local development
-
-SQLite is the default local database, so the app can be run without a separate database server. To use MySQL, set `DB_ENGINE=mysql` and the `DB_*` values in `.env`. Never commit `.env`.
-
-```text
+```sh
+git clone https://github.com/SE-Team-5-28/SE_Project.git
+cd SE_Project
 python -m venv .venv
-.venv\\Scripts\\activate
-pip install -r requirements.txt
+source .venv/bin/activate
+```
+
+Install the application dependencies:
+
+```powershell
+python -m pip install -r requirements.txt
+Copy-Item .env.example .env
+```
+
+On macOS or Linux, use `cp .env.example .env` instead of `Copy-Item`.
+Review `.env` before running the app. The example is configured for local
+SQLite use and leaves `DJANGO_SECRET_KEY` blank; with `DJANGO_DEBUG=True`, the
+application uses a development-only fallback. Production requires an
+externally supplied key of at least 50 characters with at least 16 distinct
+characters. Keep production secrets out of source control and never put them
+in `.env.example`.
+
+Apply database migrations and start the development server:
+
+```sh
 python manage.py migrate
-python manage.py createsuperuser
 python manage.py runserver
 ```
 
-The production-like HTTPS templates and deployment notes are in `deploy/`. The normalized data model is documented in `docs/requirements-traceability.md`.
+Open <http://127.0.0.1:8000/>. The database file `db.sqlite3` is created in
+the repository root and is ignored by Git.
 
-University-wide academic administration and payment processing beyond potential future API integration are outside the current project scope.
+## Configuration
+
+`config/settings.py` loads variables from the repository-root `.env` file.
+Unset variables use the defaults below. Boolean values are enabled by setting
+`True` (case-insensitive). In production (`DJANGO_DEBUG=False`), secure session
+and CSRF cookies and HTTP-to-HTTPS redirects are enforced regardless of the
+development toggles. Sessions expire after one hour, expire when the browser
+closes, and are refreshed on requests.
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `DJANGO_SECRET_KEY` | empty | Django signing key. An insecure fallback is used only in debug mode; production requires an external key of at least 50 characters and 16 distinct characters. |
+| `DJANGO_DEBUG` | `True` | Enables Django debug mode; set to `False` for production. |
+| `DJANGO_ALLOWED_HOSTS` | `127.0.0.1,localhost` | Comma-separated hostnames accepted by Django. |
+| `DJANGO_COOKIE_SECURE` | `False` | Enables HTTPS-only session and CSRF cookies in debug mode; cookies are always secure in production. |
+| `DJANGO_SECURE_SSL_REDIRECT` | `False` | Enables HTTP-to-HTTPS redirects in debug mode; redirects are always enabled in production. |
+| `DJANGO_TRUST_PROXY_SSL_HEADER` | `False` | Trusts `X-Forwarded-Proto: https` only when `True`; enable only behind a trusted proxy that overwrites the header and blocks direct client access to the app server. |
+| `DJANGO_HSTS_SECONDS` | `0` | Sets the HSTS duration in seconds; configure only after HTTPS is verified. |
+| `DJANGO_HSTS_INCLUDE_SUBDOMAINS` | `False` | Includes subdomains in HSTS when `True`; use only when every subdomain supports HTTPS. |
+| `DJANGO_HSTS_PRELOAD` | `False` | Enables HSTS preload when `True`; use only after verifying all preload requirements. |
+| `DB_ENGINE` | `sqlite` | Select `sqlite` (any non-`mysql` value uses SQLite) or `mysql`. |
+| `DB_NAME` | `hms_db` | MySQL database name; used only when `DB_ENGINE=mysql`. |
+| `DB_USER` | `root` | MySQL username; used only when `DB_ENGINE=mysql`. |
+| `DB_PASSWORD` | empty | MySQL password; used only when `DB_ENGINE=mysql`. |
+| `DB_HOST` | `127.0.0.1` | MySQL host; used only when `DB_ENGINE=mysql`. |
+| `DB_PORT` | `3306` | MySQL port; used only when `DB_ENGINE=mysql`. |
+
+### Optional MySQL setup
+
+Install and start MySQL, create a database and user, then set `DB_ENGINE=mysql`
+and the `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, and `DB_PORT` values in
+`.env` (uncomment the corresponding example entries if you copied
+`.env.example`). The MySQL Python driver is included in `requirements.txt`. Run
+`python manage.py migrate` after configuring the connection. SQLite remains
+the default for local development and CI.
+
+## Demo data and accounts
+
+After migrations, create repeatable sample hostel, room, allocation, student,
+and role data with:
+
+```sh
+python manage.py seed_demo
+```
+
+The command creates these usernames: `demo_student1`, `demo_student2`,
+`demo_warden`, and `demo_admin`. It deliberately does **not** set usable
+passwords. Set a password for each account you want to use by running
+`python manage.py changepassword <username>` and entering a password when
+prompted, for example:
+
+```sh
+python manage.py changepassword demo_student1
+```
+
+The command can be run again to ensure the demo records exist. It does not
+create a production account or initialize a production database.
+
+## Checks and tests
+
+Run the standard Django system check and automated test suite:
+
+```sh
+python manage.py check
+python manage.py test
+```
+
+The CI workflow runs these same commands with SQLite. The test suite also
+contains a MySQL-only concurrency test; it is skipped when the active database
+is not MySQL. `python manage.py check --deploy` can report production
+configuration warnings, but passing it alone does not establish that a live
+deployment is secure or available.
+
+## Deployment notes
+
+`requirements-production.txt` adds Gunicorn. The files in `deploy/` are example
+systemd and Nginx configuration for a Linux host using MySQL and HTTPS; replace
+the example paths, domain, and certificate references and review all settings
+for the target environment. `deploy/README.md` describes the intended
+configuration steps, including the production key requirements and when to
+trust the reverse-proxy HTTPS header. These templates are not evidence of a
+deployed or externally verified service: this repository does not include TLS
+certificates, production credentials, backup/restore automation, or runtime
+monitoring.
+
+## Repository guide
+
+```text
+config/                         Django settings, URLs, and WSGI/ASGI entrypoints
+core/                           Application models, views, templates, tests, and seed command
+docs/Hostel_Management_System_SRS.pdf
+docs/Hostel_Management_System_SAD.docx
+docs/Hostel_Management_System_Test_Plan.pdf
+docs/architecture-deviations.md Current implementation compared with the submitted design
+docs/requirements-traceability.md Requirements, implementation, and test references
+deploy/                         Example production-like configuration templates
+requirements.txt                Local and CI Python dependencies
+requirements-production.txt     Dependencies including Gunicorn
+```
+
+The submitted Software Requirements Specification (SRS), Software Architecture
+Document (SAD), and Software Test Plan (STP) describe planned requirements and
+designs; see the deviations document for what is implemented and what remains
+unverified.

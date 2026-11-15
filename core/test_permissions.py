@@ -3,6 +3,7 @@ from django.urls import reverse
 
 from core.models import (
     Block,
+    Complaint,
     Hostel,
     Room,
     Student,
@@ -277,3 +278,68 @@ class RoleBasedAccessTests(TestCase):
             "<strong>1</strong><span>Pending transfers</span>",
             html=True,
         )
+
+    def test_student_dashboard_shows_workflows_and_personal_counts(self):
+        student = Student.objects.create(
+            user=self.student,
+            student_id="DASH-STU-002",
+            full_name="Dashboard Student",
+        )
+        TransferRequest.objects.create(
+            student=student,
+            reason="Need a quieter room",
+        )
+        Complaint.objects.create(
+            student=student,
+            category="Maintenance",
+            description="The desk lamp is not working.",
+        )
+        self.client.force_login(self.student)
+
+        response = self.client.get(reverse("student_dashboard"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Student Dashboard")
+        self.assertContains(response, "Current room")
+        self.assertContains(response, "Not allocated")
+        self.assertContains(
+            response,
+            "<span>Pending transfer requests</span><strong>1</strong>",
+            html=True,
+        )
+        self.assertContains(
+            response,
+            "<span>Open complaints</span><strong>1</strong>",
+            html=True,
+        )
+        self.assertContains(response, "Request a room transfer")
+        self.assertContains(response, reverse("my_transfer_requests"))
+        self.assertContains(response, reverse("complaint_create"))
+        self.assertContains(response, reverse("complaint_list"))
+        self.assertNotContains(response, reverse("student_list"))
+
+    def test_warden_dashboard_shows_operational_content_and_navigation(self):
+        self.client.force_login(self.warden)
+
+        response = self.client.get(reverse("warden_dashboard"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Warden Dashboard")
+        self.assertContains(response, "Active allocations")
+        self.assertContains(response, reverse("student_list"))
+        self.assertContains(response, reverse("hostel_list"))
+        self.assertContains(response, reverse("allocation_list"))
+        self.assertContains(response, reverse("pending_requests"))
+        self.assertContains(response, reverse("occupancy_report"))
+        self.assertContains(response, reverse("audit_log_list"))
+
+    def test_system_administrator_dashboard_identifies_role_and_actions(self):
+        self.client.force_login(self.system_admin)
+
+        response = self.client.get(reverse("administrator_dashboard"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "System Administrator Dashboard")
+        self.assertContains(response, "Your role is System Administrator")
+        self.assertContains(response, reverse("student_list"))
+        self.assertContains(response, reverse("audit_log_list"))
