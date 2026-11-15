@@ -356,8 +356,14 @@ class HostelOperationsTests(TestCase):
             reverse("transfer_create"),
             {"requested_room": destination.pk, "reason": "Accessibility"},
         )
-        self.assertRedirects(response, reverse("dashboard"))
+        self.assertRedirects(response, reverse("my_transfer_requests"))
         transfer = TransferRequest.objects.get(student=self.student)
+        self.assertEqual(transfer.status, TransferRequest.Status.PENDING)
+
+        self.client.force_login(self.student_user)
+        response = self.client.get(reverse("my_transfer_requests"))
+        self.assertContains(response, transfer.get_status_display())
+        self.assertContains(response, "Accessibility")
 
         self.client.force_login(self.staff)
         response = self.client.get(reverse("transfer_list"))
@@ -383,6 +389,84 @@ class HostelOperationsTests(TestCase):
         self.assertEqual(destination.occupied_count, 1)
         self.student.refresh_from_db()
         self.assertEqual(self.student.room_number, destination.room_number)
+
+    def test_student_transfer_history_only_contains_own_requests(self):
+        own_request = TransferRequest.objects.create(
+            student=self.student,
+            requested_room=self.room,
+            reason="Need a quieter room",
+        )
+        approved_request = TransferRequest.objects.create(
+            student=self.student,
+            requested_room=self.room,
+            reason="Medical accommodation",
+            status=TransferRequest.Status.APPROVED,
+        )
+        other_user = User.objects.create_user(
+            username="another_student",
+        )
+        other_student = Student.objects.create(
+            user=other_user,
+            student_id="PES104",
+        )
+        other_request = TransferRequest.objects.create(
+            student=other_student,
+            requested_room=self.room,
+            reason="Private request from another student",
+        )
+
+        self.client.force_login(self.student_user)
+        response = self.client.get(reverse("my_transfer_requests"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            list(response.context["transfer_requests"]),
+            [approved_request, own_request],
+        )
+        self.assertContains(response, "Need a quieter room")
+        self.assertContains(response, "Medical accommodation")
+        self.assertContains(response, approved_request.get_status_display())
+        self.assertNotContains(response, other_request.reason)
+
+    def test_staff_cannot_access_student_transfer_history(self):
+        self.client.force_login(self.staff)
+
+        response = self.client.get(reverse("my_transfer_requests"))
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_empty_transfer_reason_is_rejected(self):
+        destination = Room.objects.create(
+            block=self.block,
+            number="102",
+            room_code="NORTH-A-102",
+            capacity=1,
+        )
+        self.client.force_login(self.student_user)
+
+        response = self.client.post(
+            reverse("transfer_create"),
+            {"requested_room": destination.pk, "reason": "   "},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            TransferRequest.objects.filter(student=self.student).count(),
+            0,
+        )
+        self.assertIn("reason", response.context["form"].errors)
+
+    def test_invalid_transfer_room_is_rejected(self):
+        self.client.force_login(self.student_user)
+
+        response = self.client.post(
+            reverse("transfer_create"),
+            {"requested_room": "not-a-room", "reason": "Need to relocate"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(TransferRequest.objects.count(), 0)
+        self.assertIn("requested_room", response.context["form"].errors)
 
     def test_approval_rejects_full_destination_without_partial_transfer(self):
         destination = Room.objects.create(
