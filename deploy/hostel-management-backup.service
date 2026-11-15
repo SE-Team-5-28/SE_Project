@@ -1,0 +1,11 @@
+[Unit]
+Description=Create a verified Hostel Management database backup
+After=network.target
+
+[Service]
+Type=oneshot
+User=www-data
+Group=www-data
+WorkingDirectory=/srv/hostel-management
+EnvironmentFile=/srv/hostel-management/.env
+ExecStart=/srv/hostel-management/.venv/bin/python /srv/hostel-management/manage.py backup_database --output-dir /var/backups/hostel-management --keep-days 30
