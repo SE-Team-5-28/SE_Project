@@ -198,6 +198,8 @@ python manage.py changepassword demo_student1
 
 The command can be run again to ensure the demo records exist. It does not
 create a production account or initialize a production database.
+The [Sprint 2 demo and freeze record](docs/sprint-2-demo.md) provides a
+reproducible walkthrough and records its verification gaps.
 
 ## Checks and tests
 
@@ -248,6 +250,7 @@ docs/architecture-deviations.md Current implementation compared with the submitt
 docs/performance-checks.md       TC-Perf-01 scenario, results, and limitations
 docs/performance-results.json    Retained local benchmark measurements
 docs/requirements-traceability.md Requirements, implementation, and test references
+docs/sprint-2-demo.md             Sprint 2 demo sequence and tested baseline
 deploy/                         Example production-like configuration templates
 requirements.txt                Local and CI Python dependencies
 requirements-production.txt     Dependencies including Gunicorn
