@@ -36,8 +36,10 @@ STP's proposed test strategy and environment (Sections 5–6).
   concurrent-allocation test is skipped on SQLite, so a SQLite test run is not
   evidence of MySQL concurrency behavior.
 - HTTPS behavior has Django-level tests and example Nginx/systemd deployment
-  templates, but the repository contains no deployment certificates and does
-  not establish that a live TLS deployment has been configured or verified.
+  templates. Production settings require an externally supplied strong secret,
+  secure cookies, and HTTPS redirects; proxy-header trust is opt-in. The
+  repository contains no deployment certificates and does not establish that
+  a live TLS deployment has been configured or verified.
 
 For local setup, environment variables, demo account password setup, and the
 commands currently run in CI, see the [README](../README.md). Requirement-to-

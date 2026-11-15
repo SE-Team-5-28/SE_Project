@@ -62,9 +62,11 @@ Copy-Item .env.example .env
 
 On macOS or Linux, use `cp .env.example .env` instead of `Copy-Item`.
 Review `.env` before running the app. The example is configured for local
-SQLite use. Generate a unique `DJANGO_SECRET_KEY` for any environment beyond
-throwaway local development. Never commit `.env` or put real credentials in
-`.env.example`.
+SQLite use and leaves `DJANGO_SECRET_KEY` blank; with `DJANGO_DEBUG=True`, the
+application uses a development-only fallback. Production requires an
+externally supplied key of at least 50 characters with at least 16 distinct
+characters. Keep production secrets out of source control and never put them
+in `.env.example`.
 
 Apply database migrations and start the development server:
 
@@ -79,17 +81,23 @@ the repository root and is ignored by Git.
 ## Configuration
 
 `config/settings.py` loads variables from the repository-root `.env` file.
-Unset variables use the defaults below. Boolean values are enabled only by
-setting `True` (case-insensitive).
+Unset variables use the defaults below. Boolean values are enabled by setting
+`True` (case-insensitive). In production (`DJANGO_DEBUG=False`), secure session
+and CSRF cookies and HTTP-to-HTTPS redirects are enforced regardless of the
+development toggles. Sessions expire after one hour, expire when the browser
+closes, and are refreshed on requests.
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `DJANGO_SECRET_KEY` | `dev-only-change-me` | Django signing key. Replace with a unique, private value outside disposable local use. |
-| `DJANGO_DEBUG` | `False` | Enables Django debug mode when set to `True`; use only for local development. |
+| `DJANGO_SECRET_KEY` | empty | Django signing key. An insecure fallback is used only in debug mode; production requires an external key of at least 50 characters and 16 distinct characters. |
+| `DJANGO_DEBUG` | `True` | Enables Django debug mode; set to `False` for production. |
 | `DJANGO_ALLOWED_HOSTS` | `127.0.0.1,localhost` | Comma-separated hostnames accepted by Django. |
-| `DJANGO_COOKIE_SECURE` | `False` | Sets session and CSRF cookies to HTTPS-only when `True`. |
-| `DJANGO_SECURE_SSL_REDIRECT` | `False` | Redirects HTTP requests to HTTPS when `True`; enable only behind working HTTPS. |
-| `DJANGO_HSTS_SECONDS` | `0` | Enables HSTS for the configured number of seconds; increase only after HTTPS is verified. |
+| `DJANGO_COOKIE_SECURE` | `False` | Enables HTTPS-only session and CSRF cookies in debug mode; cookies are always secure in production. |
+| `DJANGO_SECURE_SSL_REDIRECT` | `False` | Enables HTTP-to-HTTPS redirects in debug mode; redirects are always enabled in production. |
+| `DJANGO_TRUST_PROXY_SSL_HEADER` | `False` | Trusts `X-Forwarded-Proto: https` only when `True`; enable only behind a trusted proxy that overwrites the header and blocks direct client access to the app server. |
+| `DJANGO_HSTS_SECONDS` | `0` | Sets the HSTS duration in seconds; configure only after HTTPS is verified. |
+| `DJANGO_HSTS_INCLUDE_SUBDOMAINS` | `False` | Includes subdomains in HSTS when `True`; use only when every subdomain supports HTTPS. |
+| `DJANGO_HSTS_PRELOAD` | `False` | Enables HSTS preload when `True`; use only after verifying all preload requirements. |
 | `DB_ENGINE` | `sqlite` | Select `sqlite` (any non-`mysql` value uses SQLite) or `mysql`. |
 | `DB_NAME` | `hms_db` | MySQL database name; used only when `DB_ENGINE=mysql`. |
 | `DB_USER` | `root` | MySQL username; used only when `DB_ENGINE=mysql`. |
@@ -101,9 +109,10 @@ setting `True` (case-insensitive).
 
 Install and start MySQL, create a database and user, then set `DB_ENGINE=mysql`
 and the `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, and `DB_PORT` values in
-`.env`. The MySQL Python driver is included in `requirements.txt`. Run
-`python manage.py migrate` after configuring the connection. SQLite remains the
-default for local development and CI.
+`.env` (uncomment the corresponding example entries if you copied
+`.env.example`). The MySQL Python driver is included in `requirements.txt`. Run
+`python manage.py migrate` after configuring the connection. SQLite remains
+the default for local development and CI.
 
 ## Demo data and accounts
 
@@ -148,8 +157,9 @@ deployment is secure or available.
 systemd and Nginx configuration for a Linux host using MySQL and HTTPS; replace
 the example paths, domain, and certificate references and review all settings
 for the target environment. `deploy/README.md` describes the intended
-configuration steps. These templates are not evidence of a deployed or
-externally verified service: this repository does not include TLS
+configuration steps, including the production key requirements and when to
+trust the reverse-proxy HTTPS header. These templates are not evidence of a
+deployed or externally verified service: this repository does not include TLS
 certificates, production credentials, backup/restore automation, or runtime
 monitoring.
 
