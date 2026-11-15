@@ -5,6 +5,7 @@ from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods, require_POST
 
@@ -63,12 +64,172 @@ def dashboard(request):
     return render(request, "core/dashboard.html", context)
 
 
+def _role_dashboard_context(request):
+    role = get_user_role(request.user)
+    role_label = dict(User.Role.choices)[role]
+    context = {
+        "page_title": f"{role_label} Dashboard",
+        "dashboard_metrics": [],
+        "dashboard_actions": [],
+    }
+
+    if role == User.Role.STUDENT:
+        try:
+            student = request.user.student_profile
+        except Student.DoesNotExist:
+            student = None
+
+        current_allocation = None
+        if student:
+            current_allocation = (
+                Allocation.objects.filter(
+                    student=student,
+                    status=Allocation.Status.ACTIVE,
+                )
+                .select_related("room__block__hostel")
+                .first()
+            )
+            pending_transfers = student.transfer_requests.filter(
+                status=TransferRequest.Status.PENDING,
+            ).count()
+            open_complaints = student.complaints.filter(
+                status__in=[
+                    Complaint.Status.OPEN,
+                    Complaint.Status.IN_PROGRESS,
+                ],
+            ).count()
+        else:
+            pending_transfers = 0
+            open_complaints = 0
+            context["profile_notice"] = (
+                "Your account is not linked to a student profile. "
+                "Contact your hostel warden to connect your profile."
+            )
+
+        context.update(
+            {
+                "dashboard_intro": (
+                    "View your room details and follow your hostel requests."
+                ),
+                "dashboard_metrics": [
+                    {
+                        "label": "Current room",
+                        "value": (
+                            str(current_allocation.room)
+                            if current_allocation
+                            else "Not allocated"
+                        ),
+                    },
+                    {
+                        "label": "Pending transfer requests",
+                        "value": pending_transfers,
+                    },
+                    {
+                        "label": "Open complaints",
+                        "value": open_complaints,
+                    },
+                ],
+                "dashboard_actions": [
+                    {
+                        "label": "Request a room transfer",
+                        "url": reverse("transfer_create"),
+                        "description": "Ask to move to another available room.",
+                    },
+                    {
+                        "label": "My transfer requests",
+                        "url": reverse("my_transfer_requests"),
+                        "description": "Check the status of your requests.",
+                    },
+                    {
+                        "label": "Submit a complaint",
+                        "url": reverse("complaint_create"),
+                        "description": "Tell hostel staff about an issue.",
+                    },
+                    {
+                        "label": "My complaints",
+                        "url": reverse("complaint_list"),
+                        "description": "Review complaint status and updates.",
+                    },
+                ],
+            }
+        )
+        return context
+
+    context.update(
+        {
+            "dashboard_intro": (
+                "Review hostel operations and take action on student requests."
+            ),
+            "dashboard_metrics": [
+                {
+                    "label": "Students",
+                    "value": Student.objects.count(),
+                },
+                {
+                    "label": "Active allocations",
+                    "value": Allocation.objects.filter(
+                        status=Allocation.Status.ACTIVE,
+                    ).count(),
+                },
+                {
+                    "label": "Pending transfer requests",
+                    "value": TransferRequest.objects.filter(
+                        status=TransferRequest.Status.PENDING,
+                    ).count(),
+                },
+                {
+                    "label": "Unresolved complaints",
+                    "value": Complaint.objects.filter(
+                        status__in=[
+                            Complaint.Status.OPEN,
+                            Complaint.Status.IN_PROGRESS,
+                        ],
+                    ).count(),
+                },
+            ],
+            "dashboard_actions": [
+                {
+                    "label": "Student records",
+                    "url": reverse("student_list"),
+                    "description": "View and update student records.",
+                },
+                {
+                    "label": "Hostels and rooms",
+                    "url": reverse("hostel_list"),
+                    "description": "Review hostel, block, and room details.",
+                },
+                {
+                    "label": "Allocations",
+                    "url": reverse("allocation_list"),
+                    "description": "Review student room allocations.",
+                },
+                {
+                    "label": "Pending requests",
+                    "url": reverse("pending_requests"),
+                    "description": "Review transfers and unresolved complaints.",
+                },
+                {
+                    "label": "Occupancy report",
+                    "url": reverse("occupancy_report"),
+                    "description": "Review capacity, occupancy, and vacancies.",
+                },
+                {
+                    "label": "Audit log",
+                    "url": reverse("audit_log_list"),
+                    "description": "Review recorded administrative actions.",
+                },
+            ],
+        }
+    )
+    return context
+
+
 @role_required(User.Role.STUDENT)
 def student_dashboard(request):
     return render(
         request,
         "core/role_dashboard.html",
-        {"page_title": "Student Dashboard"},
+        _role_dashboard_context(request),
     )
 
 
@@ -77,7 +238,7 @@ def warden_dashboard(request):
     return render(
         request,
         "core/role_dashboard.html",
-        {"page_title": "Warden Dashboard"},
+        _role_dashboard_context(request),
     )
 
 
@@ -86,7 +247,7 @@ def administrator_dashboard(request):
     return render(
         request,
         "core/role_dashboard.html",
-        {"page_title": "Administrator Dashboard"},
+        _role_dashboard_context(request),
     )
 
 

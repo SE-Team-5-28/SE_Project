@@ -53,6 +53,7 @@ class AuthenticationWorkflowTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Invalid username or password")
+        self.assertContains(response, 'role="alert"')
         self.assertRedirects(
             self.client.get(reverse("dashboard")),
             f"{reverse('login')}?next={reverse('dashboard')}",
@@ -1856,6 +1857,9 @@ class InputValidationSecurityTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Please correct the errors below")
+        self.assertContains(response, "Student ID must contain only letters")
+        self.assertContains(response, 'aria-invalid="true"')
         self.assertFalse(
             Student.objects.filter(
                 student_id="' OR '1'='1"
