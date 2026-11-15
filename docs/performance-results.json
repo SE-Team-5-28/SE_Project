@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "run_at_utc": "2026-11-15T09:35:41.325461+00:00",
+  "run_at_utc": "2026-11-15T09:40:03.278972+00:00",
   "environment": {
     "os": "Windows-10-10.0.26200-SP0",
     "python": "3.11.2",
@@ -13,7 +13,7 @@
     "measured_requests": 120,
     "concurrency": 4,
     "warmup_requests_per_operation": 2,
-    "measurement_duration_seconds": 6.93,
+    "measurement_duration_seconds": 8.415,
     "threshold_ms": 3000
   },
   "dataset": {
@@ -28,67 +28,67 @@
   "operations": {
     "staff_dashboard": {
       "count": 20,
-      "min_ms": 38.359,
-      "median_ms": 44.638,
-      "p90_ms": 54.943,
-      "p95_ms": 62.865,
-      "max_ms": 101.079,
-      "mean_ms": 49.168
+      "min_ms": 37.457,
+      "median_ms": 55.091,
+      "p90_ms": 72.199,
+      "p95_ms": 77.638,
+      "max_ms": 84.208,
+      "mean_ms": 56.883
     },
     "student_list": {
       "count": 20,
-      "min_ms": 103.874,
-      "median_ms": 161.906,
-      "p90_ms": 222.704,
-      "p95_ms": 230.288,
-      "max_ms": 338.272,
-      "mean_ms": 173.319
+      "min_ms": 130.844,
+      "median_ms": 185.868,
+      "p90_ms": 343.443,
+      "p95_ms": 348.549,
+      "max_ms": 371.628,
+      "mean_ms": 207.706
     },
     "hostel_list": {
       "count": 20,
-      "min_ms": 384.035,
-      "median_ms": 750.618,
-      "p90_ms": 982.04,
-      "p95_ms": 991.718,
-      "max_ms": 1046.521,
-      "mean_ms": 778.647
+      "min_ms": 486.944,
+      "median_ms": 957.868,
+      "p90_ms": 1313.383,
+      "p95_ms": 1362.534,
+      "max_ms": 1522.015,
+      "mean_ms": 970.027
     },
     "allocation_list": {
       "count": 20,
-      "min_ms": 57.709,
-      "median_ms": 97.8,
-      "p90_ms": 138.214,
-      "p95_ms": 139.547,
-      "max_ms": 170.027,
-      "mean_ms": 103.862
+      "min_ms": 68.824,
+      "median_ms": 103.147,
+      "p90_ms": 147.536,
+      "p95_ms": 148.188,
+      "max_ms": 257.507,
+      "mean_ms": 114.407
     },
     "occupancy_report": {
       "count": 20,
-      "min_ms": 50.672,
-      "median_ms": 68.325,
-      "p90_ms": 82.242,
-      "p95_ms": 83.129,
-      "max_ms": 99.494,
-      "mean_ms": 68.48
+      "min_ms": 53.967,
+      "median_ms": 84.199,
+      "p90_ms": 100.084,
+      "p95_ms": 101.085,
+      "max_ms": 105.406,
+      "mean_ms": 83.832
     },
     "pending_requests": {
       "count": 20,
-      "min_ms": 136.266,
-      "median_ms": 186.524,
-      "p90_ms": 203.937,
-      "p95_ms": 222.002,
-      "max_ms": 260.984,
-      "mean_ms": 189.677
+      "min_ms": 142.517,
+      "median_ms": 211.445,
+      "p90_ms": 267.408,
+      "p95_ms": 270.609,
+      "max_ms": 321.603,
+      "mean_ms": 221.239
     }
   },
   "overall": {
     "count": 120,
-    "min_ms": 38.359,
-    "median_ms": 133.397,
-    "p90_ms": 740.134,
-    "p95_ms": 823.846,
-    "max_ms": 1046.521,
-    "mean_ms": 227.192
+    "min_ms": 37.457,
+    "median_ms": 147.344,
+    "p90_ms": 930.324,
+    "p95_ms": 1010.141,
+    "max_ms": 1522.015,
+    "mean_ms": 275.682
   },
   "passed": true,
   "failures": [],
@@ -97,721 +97,721 @@
     {
       "operation": "staff_dashboard",
       "status": 200,
-      "latency_ms": 50.431,
+      "latency_ms": 77.638,
       "error": null
     },
     {
       "operation": "allocation_list",
       "status": 200,
-      "latency_ms": 64.417,
+      "latency_ms": 104.054,
       "error": null
     },
     {
       "operation": "student_list",
       "status": 200,
-      "latency_ms": 103.874,
+      "latency_ms": 161.325,
       "error": null
     },
     {
       "operation": "occupancy_report",
       "status": 200,
-      "latency_ms": 69.445,
+      "latency_ms": 95.454,
       "error": null
     },
     {
       "operation": "staff_dashboard",
       "status": 200,
-      "latency_ms": 54.943,
+      "latency_ms": 56.091,
       "error": null
     },
     {
       "operation": "student_list",
       "status": 200,
-      "latency_ms": 134.453,
+      "latency_ms": 130.844,
       "error": null
     },
     {
       "operation": "pending_requests",
       "status": 200,
-      "latency_ms": 203.937,
-      "error": null
-    },
-    {
-      "operation": "occupancy_report",
-      "status": 200,
-      "latency_ms": 62.818,
+      "latency_ms": 208.037,
       "error": null
     },
     {
       "operation": "allocation_list",
       "status": 200,
-      "latency_ms": 89.202,
+      "latency_ms": 75.915,
+      "error": null
+    },
+    {
+      "operation": "occupancy_report",
+      "status": 200,
+      "latency_ms": 76.043,
       "error": null
     },
     {
       "operation": "staff_dashboard",
       "status": 200,
-      "latency_ms": 42.263,
+      "latency_ms": 72.199,
       "error": null
     },
     {
       "operation": "pending_requests",
       "status": 200,
-      "latency_ms": 183.711,
+      "latency_ms": 270.609,
       "error": null
     },
     {
       "operation": "student_list",
       "status": 200,
-      "latency_ms": 177.341,
+      "latency_ms": 238.46,
       "error": null
     },
     {
       "operation": "allocation_list",
       "status": 200,
-      "latency_ms": 77.336,
+      "latency_ms": 89.402,
       "error": null
     },
     {
       "operation": "occupancy_report",
       "status": 200,
-      "latency_ms": 50.752,
+      "latency_ms": 84.16,
       "error": null
     },
     {
-      "operation": "hostel_list",
+      "operation": "pending_requests",
       "status": 200,
-      "latency_ms": 756.132,
+      "latency_ms": 321.603,
       "error": null
     },
     {
       "operation": "staff_dashboard",
       "status": 200,
-      "latency_ms": 47.036,
-      "error": null
-    },
-    {
-      "operation": "pending_requests",
-      "status": 200,
-      "latency_ms": 184.305,
+      "latency_ms": 84.208,
       "error": null
     },
     {
       "operation": "hostel_list",
       "status": 200,
-      "latency_ms": 740.134,
+      "latency_ms": 1313.383,
       "error": null
     },
     {
       "operation": "student_list",
       "status": 200,
-      "latency_ms": 222.704,
+      "latency_ms": 371.628,
+      "error": null
+    },
+    {
+      "operation": "hostel_list",
+      "status": 200,
+      "latency_ms": 1522.015,
       "error": null
     },
     {
       "operation": "allocation_list",
       "status": 200,
-      "latency_ms": 139.547,
+      "latency_ms": 100.053,
       "error": null
     },
     {
       "operation": "occupancy_report",
       "status": 200,
-      "latency_ms": 82.242,
+      "latency_ms": 90.895,
       "error": null
     },
     {
       "operation": "staff_dashboard",
       "status": 200,
-      "latency_ms": 50.35,
+      "latency_ms": 58.55,
       "error": null
     },
     {
       "operation": "pending_requests",
       "status": 200,
-      "latency_ms": 199.598,
-      "error": null
-    },
-    {
-      "operation": "student_list",
-      "status": 200,
-      "latency_ms": 158.135,
+      "latency_ms": 211.285,
       "error": null
     },
     {
       "operation": "hostel_list",
       "status": 200,
-      "latency_ms": 823.846,
+      "latency_ms": 1362.534,
       "error": null
     },
     {
-      "operation": "occupancy_report",
+      "operation": "student_list",
       "status": 200,
-      "latency_ms": 68.242,
+      "latency_ms": 191.399,
       "error": null
     },
     {
       "operation": "allocation_list",
       "status": 200,
-      "latency_ms": 103.047,
+      "latency_ms": 82.885,
+      "error": null
+    },
+    {
+      "operation": "occupancy_report",
+      "status": 200,
+      "latency_ms": 71.705,
       "error": null
     },
     {
       "operation": "staff_dashboard",
       "status": 200,
-      "latency_ms": 44.156,
-      "error": null
-    },
-    {
-      "operation": "hostel_list",
-      "status": 200,
-      "latency_ms": 719.976,
+      "latency_ms": 64.626,
       "error": null
     },
     {
       "operation": "pending_requests",
       "status": 200,
-      "latency_ms": 203.495,
+      "latency_ms": 211.606,
+      "error": null
+    },
+    {
+      "operation": "hostel_list",
+      "status": 200,
+      "latency_ms": 1010.457,
       "error": null
     },
     {
       "operation": "student_list",
       "status": 200,
-      "latency_ms": 160.601,
-      "error": null
-    },
-    {
-      "operation": "occupancy_report",
-      "status": 200,
-      "latency_ms": 68.581,
+      "latency_ms": 162.182,
       "error": null
     },
     {
       "operation": "allocation_list",
       "status": 200,
-      "latency_ms": 92.98,
+      "latency_ms": 147.536,
+      "error": null
+    },
+    {
+      "operation": "occupancy_report",
+      "status": 200,
+      "latency_ms": 105.406,
       "error": null
     },
     {
       "operation": "staff_dashboard",
       "status": 200,
-      "latency_ms": 42.092,
+      "latency_ms": 48.697,
       "error": null
     },
     {
       "operation": "pending_requests",
       "status": 200,
-      "latency_ms": 199.252,
+      "latency_ms": 208.622,
       "error": null
     },
     {
       "operation": "student_list",
       "status": 200,
-      "latency_ms": 177.146,
-      "error": null
-    },
-    {
-      "operation": "hostel_list",
-      "status": 200,
-      "latency_ms": 710.073,
-      "error": null
-    },
-    {
-      "operation": "occupancy_report",
-      "status": 200,
-      "latency_ms": 83.129,
+      "latency_ms": 184.369,
       "error": null
     },
     {
       "operation": "allocation_list",
       "status": 200,
-      "latency_ms": 122.797,
+      "latency_ms": 102.134,
+      "error": null
+    },
+    {
+      "operation": "occupancy_report",
+      "status": 200,
+      "latency_ms": 73.302,
+      "error": null
+    },
+    {
+      "operation": "hostel_list",
+      "status": 200,
+      "latency_ms": 972.96,
       "error": null
     },
     {
       "operation": "staff_dashboard",
       "status": 200,
-      "latency_ms": 39.698,
+      "latency_ms": 59.067,
       "error": null
     },
     {
       "operation": "pending_requests",
       "status": 200,
-      "latency_ms": 182.908,
-      "error": null
-    },
-    {
-      "operation": "student_list",
-      "status": 200,
-      "latency_ms": 163.21,
+      "latency_ms": 235.196,
       "error": null
     },
     {
       "operation": "hostel_list",
       "status": 200,
-      "latency_ms": 742.928,
+      "latency_ms": 869.378,
+      "error": null
+    },
+    {
+      "operation": "student_list",
+      "status": 200,
+      "latency_ms": 200.336,
       "error": null
     },
     {
       "operation": "allocation_list",
       "status": 200,
-      "latency_ms": 100.376,
+      "latency_ms": 99.299,
       "error": null
     },
     {
       "operation": "occupancy_report",
       "status": 200,
-      "latency_ms": 60.528,
+      "latency_ms": 87.357,
       "error": null
     },
     {
       "operation": "staff_dashboard",
       "status": 200,
-      "latency_ms": 62.865,
+      "latency_ms": 54.092,
       "error": null
     },
     {
       "operation": "pending_requests",
       "status": 200,
-      "latency_ms": 188.744,
-      "error": null
-    },
-    {
-      "operation": "hostel_list",
-      "status": 200,
-      "latency_ms": 683.096,
+      "latency_ms": 267.408,
       "error": null
     },
     {
       "operation": "student_list",
       "status": 200,
-      "latency_ms": 146.079,
+      "latency_ms": 251.012,
       "error": null
     },
     {
-      "operation": "occupancy_report",
+      "operation": "hostel_list",
       "status": 200,
-      "latency_ms": 77.62,
+      "latency_ms": 1034.784,
       "error": null
     },
     {
       "operation": "allocation_list",
       "status": 200,
-      "latency_ms": 120.694,
+      "latency_ms": 139.79,
+      "error": null
+    },
+    {
+      "operation": "occupancy_report",
+      "status": 200,
+      "latency_ms": 79.414,
       "error": null
     },
     {
       "operation": "staff_dashboard",
       "status": 200,
-      "latency_ms": 101.079,
+      "latency_ms": 57.407,
       "error": null
     },
     {
       "operation": "pending_requests",
       "status": 200,
-      "latency_ms": 260.984,
+      "latency_ms": 241.564,
       "error": null
     },
     {
       "operation": "student_list",
       "status": 200,
-      "latency_ms": 230.288,
-      "error": null
-    },
-    {
-      "operation": "allocation_list",
-      "status": 200,
-      "latency_ms": 131.738,
+      "latency_ms": 175.396,
       "error": null
     },
     {
       "operation": "hostel_list",
       "status": 200,
-      "latency_ms": 982.04,
+      "latency_ms": 976.392,
+      "error": null
+    },
+    {
+      "operation": "allocation_list",
+      "status": 200,
+      "latency_ms": 96.905,
       "error": null
     },
     {
       "operation": "occupancy_report",
       "status": 200,
-      "latency_ms": 50.672,
+      "latency_ms": 77.13,
       "error": null
     },
     {
       "operation": "staff_dashboard",
       "status": 200,
-      "latency_ms": 50.556,
+      "latency_ms": 51.668,
       "error": null
     },
     {
       "operation": "pending_requests",
       "status": 200,
-      "latency_ms": 196.939,
-      "error": null
-    },
-    {
-      "operation": "student_list",
-      "status": 200,
-      "latency_ms": 165.632,
+      "latency_ms": 216.664,
       "error": null
     },
     {
       "operation": "hostel_list",
       "status": 200,
-      "latency_ms": 1046.521,
+      "latency_ms": 1010.141,
+      "error": null
+    },
+    {
+      "operation": "student_list",
+      "status": 200,
+      "latency_ms": 343.443,
       "error": null
     },
     {
       "operation": "allocation_list",
       "status": 200,
-      "latency_ms": 170.027,
+      "latency_ms": 111.375,
       "error": null
     },
     {
       "operation": "occupancy_report",
       "status": 200,
-      "latency_ms": 68.408,
+      "latency_ms": 101.085,
       "error": null
     },
     {
       "operation": "staff_dashboard",
       "status": 200,
-      "latency_ms": 41.597,
-      "error": null
-    },
-    {
-      "operation": "hostel_list",
-      "status": 200,
-      "latency_ms": 820.833,
+      "latency_ms": 48.344,
       "error": null
     },
     {
       "operation": "pending_requests",
       "status": 200,
-      "latency_ms": 182.325,
+      "latency_ms": 241.383,
       "error": null
     },
     {
       "operation": "student_list",
       "status": 200,
-      "latency_ms": 131.785,
+      "latency_ms": 192.751,
+      "error": null
+    },
+    {
+      "operation": "hostel_list",
+      "status": 200,
+      "latency_ms": 977.011,
       "error": null
     },
     {
       "operation": "allocation_list",
       "status": 200,
-      "latency_ms": 57.709,
+      "latency_ms": 110.538,
       "error": null
     },
     {
       "operation": "occupancy_report",
       "status": 200,
-      "latency_ms": 54.115,
+      "latency_ms": 96.634,
       "error": null
     },
     {
       "operation": "staff_dashboard",
       "status": 200,
-      "latency_ms": 43.481,
+      "latency_ms": 49.681,
       "error": null
     },
     {
       "operation": "pending_requests",
       "status": 200,
-      "latency_ms": 161.444,
+      "latency_ms": 208.198,
       "error": null
     },
     {
       "operation": "student_list",
       "status": 200,
-      "latency_ms": 145.766,
+      "latency_ms": 176.848,
       "error": null
     },
     {
       "operation": "allocation_list",
       "status": 200,
-      "latency_ms": 81.087,
+      "latency_ms": 148.188,
       "error": null
     },
     {
       "operation": "hostel_list",
       "status": 200,
-      "latency_ms": 823.997,
+      "latency_ms": 1106.766,
       "error": null
     },
     {
       "operation": "occupancy_report",
       "status": 200,
-      "latency_ms": 74.562,
+      "latency_ms": 100.084,
       "error": null
     },
     {
       "operation": "staff_dashboard",
       "status": 200,
-      "latency_ms": 45.12,
+      "latency_ms": 66.289,
       "error": null
     },
     {
       "operation": "pending_requests",
       "status": 200,
-      "latency_ms": 191.195,
+      "latency_ms": 238.1,
       "error": null
     },
     {
       "operation": "student_list",
       "status": 200,
-      "latency_ms": 187.577,
+      "latency_ms": 151.249,
       "error": null
     },
     {
       "operation": "hostel_list",
       "status": 200,
-      "latency_ms": 715.575,
-      "error": null
-    },
-    {
-      "operation": "occupancy_report",
-      "status": 200,
-      "latency_ms": 99.494,
+      "latency_ms": 942.777,
       "error": null
     },
     {
       "operation": "allocation_list",
       "status": 200,
-      "latency_ms": 138.214,
+      "latency_ms": 128.587,
+      "error": null
+    },
+    {
+      "operation": "occupancy_report",
+      "status": 200,
+      "latency_ms": 72.729,
       "error": null
     },
     {
       "operation": "staff_dashboard",
       "status": 200,
-      "latency_ms": 50.247,
-      "error": null
-    },
-    {
-      "operation": "hostel_list",
-      "status": 200,
-      "latency_ms": 745.105,
+      "latency_ms": 48.85,
       "error": null
     },
     {
       "operation": "pending_requests",
       "status": 200,
-      "latency_ms": 174.211,
+      "latency_ms": 183.129,
       "error": null
     },
     {
       "operation": "student_list",
       "status": 200,
-      "latency_ms": 132.341,
+      "latency_ms": 147.152,
       "error": null
     },
     {
-      "operation": "occupancy_report",
+      "operation": "hostel_list",
       "status": 200,
-      "latency_ms": 65.911,
+      "latency_ms": 937.665,
       "error": null
     },
     {
       "operation": "allocation_list",
       "status": 200,
-      "latency_ms": 98.188,
+      "latency_ms": 68.824,
+      "error": null
+    },
+    {
+      "operation": "occupancy_report",
+      "status": 200,
+      "latency_ms": 53.967,
       "error": null
     },
     {
       "operation": "staff_dashboard",
       "status": 200,
-      "latency_ms": 43.523,
+      "latency_ms": 51.74,
       "error": null
     },
     {
       "operation": "pending_requests",
       "status": 200,
-      "latency_ms": 178.713,
+      "latency_ms": 190.551,
       "error": null
     },
     {
       "operation": "student_list",
       "status": 200,
-      "latency_ms": 160.1,
+      "latency_ms": 187.368,
       "error": null
     },
     {
       "operation": "hostel_list",
       "status": 200,
-      "latency_ms": 731.689,
-      "error": null
-    },
-    {
-      "operation": "allocation_list",
-      "status": 200,
-      "latency_ms": 90.207,
+      "latency_ms": 808.673,
       "error": null
     },
     {
       "operation": "occupancy_report",
       "status": 200,
-      "latency_ms": 61.569,
+      "latency_ms": 72.395,
+      "error": null
+    },
+    {
+      "operation": "allocation_list",
+      "status": 200,
+      "latency_ms": 110.86,
       "error": null
     },
     {
       "operation": "staff_dashboard",
       "status": 200,
-      "latency_ms": 51.562,
+      "latency_ms": 46.286,
       "error": null
     },
     {
       "operation": "pending_requests",
       "status": 200,
-      "latency_ms": 222.002,
-      "error": null
-    },
-    {
-      "operation": "student_list",
-      "status": 200,
-      "latency_ms": 210.027,
-      "error": null
-    },
-    {
-      "operation": "allocation_list",
-      "status": 200,
-      "latency_ms": 97.412,
+      "latency_ms": 218.71,
       "error": null
     },
     {
       "operation": "hostel_list",
       "status": 200,
-      "latency_ms": 865.713,
+      "latency_ms": 755.95,
+      "error": null
+    },
+    {
+      "operation": "student_list",
+      "status": 200,
+      "latency_ms": 191.491,
       "error": null
     },
     {
       "operation": "occupancy_report",
       "status": 200,
-      "latency_ms": 64.075,
+      "latency_ms": 84.238,
+      "error": null
+    },
+    {
+      "operation": "allocation_list",
+      "status": 200,
+      "latency_ms": 112.647,
       "error": null
     },
     {
       "operation": "staff_dashboard",
       "status": 200,
-      "latency_ms": 41.342,
+      "latency_ms": 37.457,
       "error": null
     },
     {
       "operation": "pending_requests",
       "status": 200,
-      "latency_ms": 190.453,
-      "error": null
-    },
-    {
-      "operation": "student_list",
-      "status": 200,
-      "latency_ms": 338.272,
+      "latency_ms": 206.45,
       "error": null
     },
     {
       "operation": "hostel_list",
       "status": 200,
-      "latency_ms": 991.718,
+      "latency_ms": 772.464,
+      "error": null
+    },
+    {
+      "operation": "student_list",
+      "status": 200,
+      "latency_ms": 348.549,
       "error": null
     },
     {
       "operation": "occupancy_report",
       "status": 200,
-      "latency_ms": 69.019,
+      "latency_ms": 85.579,
       "error": null
     },
     {
       "operation": "allocation_list",
       "status": 200,
-      "latency_ms": 91.892,
+      "latency_ms": 257.507,
       "error": null
     },
     {
       "operation": "staff_dashboard",
       "status": 200,
-      "latency_ms": 42.657,
+      "latency_ms": 47.827,
       "error": null
     },
     {
       "operation": "pending_requests",
       "status": 200,
-      "latency_ms": 175.93,
+      "latency_ms": 210.24,
       "error": null
     },
     {
       "operation": "student_list",
       "status": 200,
-      "latency_ms": 145.581,
+      "latency_ms": 177.733,
       "error": null
     },
     {
       "operation": "hostel_list",
       "status": 200,
-      "latency_ms": 927.9,
-      "error": null
-    },
-    {
-      "operation": "occupancy_report",
-      "status": 200,
-      "latency_ms": 67.934,
+      "latency_ms": 930.324,
       "error": null
     },
     {
       "operation": "allocation_list",
       "status": 200,
-      "latency_ms": 92.99,
+      "latency_ms": 99.407,
+      "error": null
+    },
+    {
+      "operation": "occupancy_report",
+      "status": 200,
+      "latency_ms": 73.579,
       "error": null
     },
     {
       "operation": "staff_dashboard",
       "status": 200,
-      "latency_ms": 38.359,
+      "latency_ms": 56.935,
       "error": null
     },
     {
       "operation": "pending_requests",
       "status": 200,
-      "latency_ms": 177.132,
+      "latency_ms": 192.902,
       "error": null
     },
     {
       "operation": "hostel_list",
       "status": 200,
-      "latency_ms": 761.195,
+      "latency_ms": 893.489,
       "error": null
     },
     {
       "operation": "student_list",
       "status": 200,
-      "latency_ms": 175.474,
-      "error": null
-    },
-    {
-      "operation": "occupancy_report",
-      "status": 200,
-      "latency_ms": 70.477,
+      "latency_ms": 170.582,
       "error": null
     },
     {
       "operation": "allocation_list",
       "status": 200,
-      "latency_ms": 117.383,
+      "latency_ms": 102.241,
+      "error": null
+    },
+    {
+      "operation": "occupancy_report",
+      "status": 200,
+      "latency_ms": 95.486,
       "error": null
     },
     {
       "operation": "pending_requests",
       "status": 200,
-      "latency_ms": 136.266,
+      "latency_ms": 142.517,
       "error": null
     },
     {
       "operation": "hostel_list",
       "status": 200,
-      "latency_ms": 600.43,
+      "latency_ms": 716.424,
       "error": null
     },
     {
       "operation": "hostel_list",
       "status": 200,
-      "latency_ms": 384.035,
+      "latency_ms": 486.944,
       "error": null
     }
   ]
