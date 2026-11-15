@@ -7,20 +7,34 @@
 | Submit room transfer requests (#37) | `TransferRequest`, student form, staff review workflow | `test_student_can_submit_and_staff_can_approve_transfer` |
 | Complete approved room transfers (#39) | Atomic allocation swap, locked destination-capacity check, and staff approval action | `test_student_can_submit_and_staff_can_approve_transfer`, `test_approval_rejects_full_destination_without_partial_transfer`, `test_transfer_rolls_back_old_allocation_when_new_allocation_fails` |
 | Responsive base layout and role dashboards (#33) | `base.html`, responsive CSS, staff/student navigation | Template smoke coverage through Django tests |
-| Secure hashing and sessions (#19) | Django password hasher, HTTP-only/SameSite session cookies, CSRF middleware | Existing login tests plus `manage.py check --deploy` in production configuration |
+| Secure hashing and sessions (#19) | Django password hasher, HTTP-only/SameSite session cookies, CSRF middleware, production secret validation | `AuthenticationWorkflowTests`, `PasswordHashingTests`, `ProtectedSessionWorkflowTests`, `ProductionSettingsTests` |
 | Audit administrative actions (#18) | Actor/timestamp audit events for room and allocation operations; role-restricted, read-only audit screen and Django admin | `HostelOperationsTests`, `StudentCheckInOutTests`, `AuditLogAccessTests` |
-| HTTPS/TLS deployment (#21) | Nginx TLS proxy, Gunicorn systemd unit, secure Django settings | `deploy/README.md` deployment checklist |
+| HTTPS/TLS deployment (#21) | Example Nginx TLS proxy, Gunicorn systemd unit, and configurable Django security settings | Django forwarded-protocol/redirect tests and deployment-template review; no live TLS deployment verified |
 
 ## Scope deviations
 
-The repository's original SRS describes MySQL as the proposed database. SQLite is now the default for local development and CI to make setup reproducible; production deployments still use MySQL by setting `DB_ENGINE=mysql`. Complaint management, occupancy reports, and backup/restore remain planned work and are not represented as complete here.
+SQLite is the default for local development and CI; MySQL can be selected with
+`DB_ENGINE=mysql`. Complaint submission/status updates and occupancy and
+pending-request views are implemented in the current repository. Backup and
+restore operations, external notification integrations, and production
+availability/performance measurements are not established by the code or
+tests. The proposed public JSON APIs in the SAD are not present; the current
+application uses server-rendered Django pages and forms. See
+[`architecture-deviations.md`](architecture-deviations.md) for the comparison
+with the submitted SRS, SAD, and STP.
 
-## Test command
+## Test commands
 
 ```text
+python manage.py check
 python manage.py test
 python manage.py check --deploy
 ```
+
+The standard system check and automated test suite are run by CI. The
+deployment check is an additional configuration review and may report
+warnings when local development settings are in use; it is not evidence of a
+live production deployment.
 
 ## Security test evidence (#8)
 
@@ -32,7 +46,11 @@ python manage.py check --deploy
 | TC-SEC-04 | HTTPS | `HttpsProxySecurityTests`: forwarded HTTPS is accepted without a redirect loop; HTTP redirects to HTTPS | Pass |
 | TC-SEC-05 | Input validation | `InputValidationSecurityTests`: injection strings, malformed values, oversized values, and invalid create requests are rejected | Pass |
 
-Execution: `python manage.py test` found 99 tests; all passed, with one MySQL-only concurrency test skipped on SQLite. The HTTPS checks exercise Django behind the configured Nginx proxy; a live TLS handshake was not run because no deployment certificate or server is available in this test environment.
+Execution: `python manage.py test` found 114 tests; all passed, with one
+MySQL-only concurrency test skipped on SQLite. The HTTPS tests exercise
+Django's forwarded-protocol and redirect handling; they do not run Nginx or
+perform a live TLS handshake. No deployment certificate or server is available
+in this test environment.
 
 ## Sprint 1 test coverage (#34)
 
