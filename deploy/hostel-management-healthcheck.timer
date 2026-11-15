@@ -1,0 +1,11 @@
+[Unit]
+Description=Periodically check the Hostel Management application
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=1min
+AccuracySec=10s
+Unit=hostel-management-healthcheck.service
+
+[Install]
+WantedBy=timers.target

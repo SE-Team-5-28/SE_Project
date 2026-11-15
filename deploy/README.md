@@ -123,3 +123,44 @@ when every affected subdomain is also HTTPS-ready.
 
 These are operator-run deployment steps. This repository change does not
 provision certificates, configure DNS, or verify a live deployment.
+
+## Health monitoring and recovery
+
+The application exposes `GET /healthz`, which returns `{"status":"ok"}` when
+Django can serve requests. It does not check the database, and it reveals no
+deployment details. The included systemd health-check service probes this
+endpoint on loopback every minute, records each result in the system journal,
+and restarts `hostel-management.service` after a failed probe. If the retry
+still fails, the check is logged as failed; inspect the application and
+database logs and resolve the underlying fault rather than repeatedly
+restarting blindly.
+
+After installing this repository at `/srv/hostel-management` and installing
+`curl`, install the monitor units and enable the timer:
+
+```sh
+sudo install -m 0644 deploy/hostel-management-healthcheck.service \
+  /etc/systemd/system/hostel-management-healthcheck.service
+sudo install -m 0644 deploy/hostel-management-healthcheck.timer \
+  /etc/systemd/system/hostel-management-healthcheck.timer
+sudo systemctl daemon-reload
+sudo systemctl enable --now hostel-management-healthcheck.timer
+```
+
+Verify operation and review the recorded checks and restarts:
+
+```sh
+sudo systemctl status hostel-management.service
+sudo systemctl status hostel-management-healthcheck.timer
+sudo journalctl -u hostel-management-healthcheck.service --since "24 hours ago"
+sudo journalctl -u hostel-management.service --since "24 hours ago"
+```
+
+For manual recovery, inspect the logs first, correct configuration or
+dependency failures, then run `sudo systemctl restart hostel-management.service`
+and verify `curl --fail https://your-hostname/healthz`. The health-check timer
+only probes the local application process; use an independent external uptime
+monitor against the public HTTPS URL to detect host, proxy, DNS, network, and
+TLS failures. Journal records begin only after the monitor is installed and
+are not historical uptime evidence. Do not claim the 99% monthly target is
+met until a complete month of trustworthy measurements is available.

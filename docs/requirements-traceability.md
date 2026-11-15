@@ -30,7 +30,7 @@ unless the stated environment and measurement were actually exercised.
 | HMS-F-041 | Show pending transfer requests and unresolved complaints. | #17 | `pending_requests_dashboard` in `core/views.py`; `core/templates/core/pending_requests.html`. | TC-RPT-02; `PendingRequestsDashboardTests.test_dashboard_displays_pending_transfers`, `.test_dashboard_displays_unresolved_complaints` — **Pass (CI)**. |
 | HMS-F-042 | Audit important administrative actions with actor, action, and timestamp. | #18 | `record_audit` in `core/services.py`; `audit` helper and audited views in `core/views.py`; `AuditLog` in `core/models.py`. | TC-AUD-01; `AuditLogAccessTests.test_room_and_allocation_admin_changes_are_audited`, `HostelOperationsTests.test_staff_can_create_room_and_audit_action` — **Pass (CI)**. |
 | HMS-NF-001 | 90th-percentile response time at most 3 seconds under normal load. | #5 (open) | No benchmark/load-test harness or measured result found in this repository. | TC-Perf-01 — **Not run**; no latency or percentile result is claimed. |
-| HMS-NF-002 | At least 99% monthly availability, excluding scheduled maintenance. | #6 (closed; evidence incomplete) | No in-repository uptime data or completed monthly observation found. | TC-REL-01 — **Not measured**; a full observation period and operational monitoring evidence are external prerequisites. |
+| HMS-NF-002 | At least 99% monthly availability, excluding scheduled maintenance. | #6 (closed; evidence incomplete) | Public `GET /healthz`, an installable systemd timer for local probes/restart recovery, and operator recovery steps are provided. No external monitor is deployed and no historical uptime data is available. | TC-REL-01; `HealthCheckTests` verify the endpoint and allowed method. Monthly availability is **Not measured**; deployment and a full observation period are required. |
 | HMS-NF-003 | Keep allocation/occupancy consistent and enforce room capacity. | #9, #26 | Allocation constraints and transactional services in `core/models.py` and `core/services.py`; occupancy logic in `core/views.py`. | TC-DATA-01; `CoreModelTests`, `AllocationServiceTests`, and capacity/transfer regression tests — **Pass on SQLite (CI)**. MySQL-specific concurrent allocation remains unverified. |
 | HMS-NF-004 | Provide responsive, understandable desktop and mobile interfaces. | #33 (closed; implementation merged), #10 (open) | Responsive base markup in `core/templates/core/base.html`; a `max-width: 600px` breakpoint in `core/static/core/site.css`. Presence of responsive styles is not usability evidence. | TC-UX-01 — **Not run**; no desktop/mobile browser test results are recorded. |
 | HMS-NF-005 | Schedule database backups and verify restoration. | #7 (closed; evidence incomplete) | No backup schedule, backup/restore procedure, or checked-in execution evidence found in this repository. | TC-REC-01 — **Not run**; backup and restore are not demonstrated by the CI suite. |
@@ -61,9 +61,11 @@ not verify MySQL-specific database behavior.
 
 - **Performance (#5):** TC-Perf-01 has no workload definition or result; normal
   load and p90 latency require a measured test environment.
-- **Availability (#6):** the issue is closed, but the repository contains no
-  monthly uptime observation. The issue's stated 99% target cannot be claimed
-  without an observation period and monitoring evidence.
+- **Availability (#6):** this branch adds a local health endpoint, installable
+  systemd monitor/restart configuration, and recovery steps. The monitor is not
+  deployed, an independent monitor for public HTTPS is still needed, and no
+  monthly uptime observation exists. The issue's stated 99% target cannot be
+  claimed without a complete observation period and trustworthy evidence.
 - **Usability (#10; implementation #33):** the responsive layout and role
   dashboards from #33 are merged; #10 remains open. Supported desktop/mobile
   browser checks and usability results are still absent.

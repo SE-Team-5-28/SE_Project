@@ -158,10 +158,11 @@ systemd and Nginx configuration for a Linux host using MySQL and HTTPS; replace
 the example paths, domain, and certificate references and review all settings
 for the target environment. `deploy/README.md` describes the intended
 configuration steps, including the production key requirements and when to
-trust the reverse-proxy HTTPS header. These templates are not evidence of a
-deployed or externally verified service: this repository does not include TLS
-certificates, production credentials, backup/restore automation, or runtime
-monitoring.
+trust the reverse-proxy HTTPS header, plus the installable systemd health
+monitor and recovery procedure. These templates are not evidence of a deployed
+or externally verified service: this repository does not include TLS
+certificates, production credentials, backup/restore automation, or external
+uptime measurements.
 
 ## Repository guide
 

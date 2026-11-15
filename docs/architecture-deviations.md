@@ -25,9 +25,12 @@ STP's proposed test strategy and environment (Sections 5–6).
   repository that describes complaints or occupancy reports as planned is
   stale.
 - Backup scheduling/restoration, external email or notification integration,
-  operational monitoring, availability measurement, and load/performance
-  measurement are not provided as working operational services in this
-  repository. They remain design or test-plan goals, not verified capabilities.
+  and load/performance measurement are not provided as working operational
+  services in this repository. A public application health endpoint and
+  installable systemd timer for local availability checks and restart recovery
+  are provided, but are not evidence of deployment or external monitoring.
+  Availability remains unmeasured until a monitor is installed and a full
+  observation period has elapsed.
 - The STP proposes broader system, performance, reliability, recovery,
   usability, browser, and security validation. The checked-in CI workflow runs
   `python manage.py check` and `python manage.py test`; those checks do not
