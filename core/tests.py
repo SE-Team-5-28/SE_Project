@@ -283,6 +283,196 @@ class HostelOperationsTests(TestCase):
             ).exists()
         )
 
+    def test_staff_can_create_hostel_and_block_records(self):
+        self.client.force_login(self.staff)
+
+        hostel_response = self.client.post(
+            reverse("hostel_create"),
+            {"name": "South Hostel", "address": "South campus"},
+        )
+        self.assertRedirects(hostel_response, reverse("hostel_list"))
+        hostel = Hostel.objects.get(name="South Hostel")
+
+        block_response = self.client.post(
+            reverse("block_create"),
+            {
+                "hostel": hostel.pk,
+                "name": "C",
+                "description": "South block",
+            },
+        )
+        self.assertRedirects(block_response, reverse("hostel_list"))
+        self.assertTrue(Block.objects.filter(hostel=hostel, name="C").exists())
+
+    def test_staff_cannot_create_room_with_zero_capacity(self):
+        self.client.force_login(self.staff)
+
+        response = self.client.post(
+            reverse("room_create"),
+            {
+                "block": self.block.pk,
+                "number": "102",
+                "room_code": "NORTH-A-102",
+                "capacity": 0,
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("capacity", response.context["form"].errors)
+        self.assertFalse(Room.objects.filter(number="102").exists())
+
+    def test_staff_can_update_hostel_block_and_room_records(self):
+        self.client.force_login(self.staff)
+
+        hostel_response = self.client.post(
+            reverse("hostel_update", args=[self.hostel.pk]),
+            {"name": "North Residence", "address": "New address"},
+        )
+        self.assertRedirects(hostel_response, reverse("hostel_list"))
+        self.hostel.refresh_from_db()
+        self.assertEqual(self.hostel.name, "North Residence")
+        self.assertEqual(self.hostel.address, "New address")
+
+        block_response = self.client.post(
+            reverse("block_update", args=[self.block.pk]),
+            {
+                "hostel": self.hostel.pk,
+                "name": "West",
+                "description": "Updated block",
+            },
+        )
+        self.assertRedirects(block_response, reverse("hostel_list"))
+        self.block.refresh_from_db()
+        self.assertEqual(self.block.name, "West")
+        self.assertEqual(self.block.description, "Updated block")
+
+        room_response = self.client.post(
+            reverse("room_update", args=[self.room.pk]),
+            {
+                "block": self.block.pk,
+                "number": "202",
+                "room_code": "NORTH-WEST-202",
+                "capacity": 3,
+                "description": "Updated room",
+            },
+        )
+        self.assertRedirects(room_response, reverse("hostel_list"))
+        self.room.refresh_from_db()
+        self.assertEqual(self.room.number, "202")
+        self.assertEqual(self.room.room_code, "NORTH-WEST-202")
+        self.assertEqual(self.room.capacity, 3)
+        self.assertEqual(self.room.description, "Updated room")
+        self.assertEqual(
+            AuditLog.objects.filter(action="updated").count(),
+            3,
+        )
+
+    def test_staff_can_move_blocks_and_rooms_between_parent_records(self):
+        destination_hostel = Hostel.objects.create(name="Annex Hostel")
+        destination_block = Block.objects.create(
+            hostel=destination_hostel,
+            name="Annex",
+        )
+        self.client.force_login(self.staff)
+
+        block_response = self.client.post(
+            reverse("block_update", args=[self.block.pk]),
+            {
+                "hostel": destination_hostel.pk,
+                "name": self.block.name,
+                "description": self.block.description,
+            },
+        )
+        self.assertRedirects(block_response, reverse("hostel_list"))
+        self.block.refresh_from_db()
+        self.assertEqual(self.block.hostel, destination_hostel)
+
+        room_response = self.client.post(
+            reverse("room_update", args=[self.room.pk]),
+            {
+                "block": destination_block.pk,
+                "number": self.room.number,
+                "room_code": self.room.room_code,
+                "capacity": self.room.capacity,
+                "description": self.room.description,
+            },
+        )
+        self.assertRedirects(room_response, reverse("hostel_list"))
+        self.room.refresh_from_db()
+        self.assertEqual(self.room.block, destination_block)
+
+        list_response = self.client.get(reverse("hostel_list"))
+        self.assertContains(list_response, "Annex Hostel")
+        self.assertContains(list_response, "Block Annex")
+        self.assertContains(list_response, "Room 101")
+
+    def test_room_capacity_cannot_be_reduced_below_active_occupancy(self):
+        self.room.capacity = 2
+        self.room.save(update_fields=["capacity"])
+        Allocation.objects.create(student=self.student, room=self.room)
+        other_user = User.objects.create_user(username="second_occupant")
+        other_student = Student.objects.create(
+            user=other_user,
+            student_id="PES101",
+        )
+        Allocation.objects.create(student=other_student, room=self.room)
+        self.client.force_login(self.staff)
+
+        response = self.client.post(
+            reverse("room_update", args=[self.room.pk]),
+            {
+                "block": self.block.pk,
+                "number": self.room.number,
+                "room_code": self.room.room_code,
+                "capacity": 1,
+                "description": self.room.description,
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("capacity", response.context["form"].errors)
+        self.assertIn("2 active occupants", str(response.context["form"].errors))
+        self.room.refresh_from_db()
+        self.assertEqual(self.room.capacity, 2)
+
+    def test_room_capacity_cannot_be_lower_than_occupancy_but_can_equal_it(self):
+        Allocation.objects.create(student=self.student, room=self.room)
+        self.client.force_login(self.staff)
+
+        response = self.client.post(
+            reverse("room_update", args=[self.room.pk]),
+            {
+                "block": self.block.pk,
+                "number": self.room.number,
+                "room_code": self.room.room_code,
+                "capacity": 1,
+                "description": self.room.description,
+            },
+        )
+
+        self.assertRedirects(response, reverse("hostel_list"))
+
+    def test_hostel_list_displays_room_occupancy_availability_and_edit_links(self):
+        Allocation.objects.create(student=self.student, room=self.room)
+        self.client.force_login(self.staff)
+
+        response = self.client.get(reverse("hostel_list"))
+
+        self.assertContains(response, "1/1 occupied")
+        self.assertContains(response, "0 available")
+        self.assertContains(
+            response,
+            reverse("hostel_update", args=[self.hostel.pk]),
+        )
+        self.assertContains(
+            response,
+            reverse("block_update", args=[self.block.pk]),
+        )
+        self.assertContains(
+            response,
+            reverse("room_update", args=[self.room.pk]),
+        )
+
     def test_staff_can_allocate_available_room_and_audit_action(self):
         self.client.force_login(self.staff)
         response = self.client.post(
@@ -1272,6 +1462,44 @@ class InputValidationSecurityTests(TestCase):
 
         self.assertFalse(form.is_valid())
         self.assertIn("room_code", form.errors)
+
+    def test_room_capacity_must_be_positive(self):
+        form = RoomForm(data={
+            "block": self.block.pk,
+            "number": "102",
+            "room_code": "SECURITY-102",
+            "capacity": 0,
+            "description": "",
+        })
+
+        self.assertFalse(form.is_valid())
+        self.assertIn("capacity", form.errors)
+
+    def test_room_capacity_cannot_be_lowered_below_active_occupancy(self):
+        from .models import Allocation
+
+        self.room.capacity = 3
+        self.room.save(update_fields=["capacity"])
+        second_student = Student.objects.create(student_id="SECURITY-002")
+        Allocation.objects.create(
+            student=Student.objects.create(student_id="SECURITY-001"),
+            room=self.room,
+        )
+        Allocation.objects.create(student=second_student, room=self.room)
+        form = RoomForm(
+            data={
+                "block": self.block.pk,
+                "number": self.room.number,
+                "room_code": self.room.room_code,
+                "capacity": 1,
+                "description": self.room.description,
+            },
+            instance=self.room,
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertIn("capacity", form.errors)
+        self.assertIn("2 active occupants", str(form.errors))
 
     def test_oversized_transfer_reason_is_rejected(self):
         from .forms import TransferRequestForm
