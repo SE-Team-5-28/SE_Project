@@ -8,6 +8,7 @@ venv/
 # Django
 db.sqlite3
 staticfiles/
+/backups/
 
 # Environment and secrets
 .env

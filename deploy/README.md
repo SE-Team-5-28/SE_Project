@@ -164,3 +164,34 @@ monitor against the public HTTPS URL to detect host, proxy, DNS, network, and
 TLS failures. Journal records begin only after the monitor is installed and
 are not historical uptime evidence. Do not claim the 99% monthly target is
 met until a complete month of trustworthy measurements is available.
+## Database backup schedule
+
+The backup service and timer templates use the same `www-data` account,
+working directory, virtual environment, and protected `.env` file as the web
+service. Review and adjust all paths before installation. Create the backup
+directory so only the service account can access it:
+
+```sh
+sudo install -d -o www-data -g www-data -m 0700 /var/backups/hostel-management
+sudo cp deploy/hostel-management-backup.service /etc/systemd/system/
+sudo cp deploy/hostel-management-backup.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now hostel-management-backup.timer
+```
+
+The timer runs daily at 02:15 with a randomized delay of up to 15 minutes.
+Backups older than 30 days are pruned only after a new backup succeeds.
+Install the matching `mysqldump` client for MySQL deployments. The
+`DB_PASSWORD` is written to a short-lived, owner-only MySQL client option file,
+not command-line arguments; protect the environment file and service account
+accordingly. Backups contain sensitive records and should be encrypted before
+transfer or off-site storage.
+
+Check `systemctl list-timers hostel-management-backup.timer` and the service
+journal for scheduled-run results. For a test restore, use
+`restore_database_backup` to create a new SQLite file that is not the active
+database, or restore a MySQL dump only into a separately provisioned,
+disposable MySQL instance and empty test schema. Verify representative records
+and application behavior before recording the restore drill. Neither the
+example timer nor automated SQLite tests prove that a production host has been
+configured or that its production data has been restored.
