@@ -498,13 +498,12 @@ class HostelOperationsTests(TestCase):
             {"student": self.student.pk, "room": self.room.pk},
         )
         self.assertRedirects(response, reverse("allocation_list"))
-        self.assertTrue(
-            Allocation.objects.filter(
-                student=self.student,
-                status=Allocation.Status.ACTIVE,
-            ).exists()
-        )
         allocation = Allocation.objects.get(student=self.student)
+        self.assertEqual(allocation.student, self.student)
+        self.assertEqual(allocation.room, self.room)
+        self.assertEqual(allocation.status, Allocation.Status.ACTIVE)
+        self.assertEqual(allocation.allocation_date, timezone.localdate())
+        self.assertEqual(allocation.check_in_date, timezone.localdate())
         entry = AuditLog.objects.get(
             action="allocated",
             model_name="Allocation",
@@ -513,6 +512,31 @@ class HostelOperationsTests(TestCase):
         self.assertEqual(entry.actor, self.staff)
         self.assertGreaterEqual(entry.created_at, started_at)
         self.assertLessEqual(entry.created_at, timezone.now())
+
+    def test_student_cannot_create_an_allocation(self):
+        self.client.force_login(self.student_user)
+
+        response = self.client.post(
+            reverse("allocation_create"),
+            {"student": self.student.pk, "room": self.room.pk},
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(Allocation.objects.exists())
+        self.assertFalse(AuditLog.objects.filter(action="allocated").exists())
+
+    def test_allocation_rejects_nonexistent_student_and_room_ids(self):
+        self.client.force_login(self.staff)
+
+        response = self.client.post(
+            reverse("allocation_create"),
+            {"student": 999999, "room": 999999},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("student", response.context["form"].errors)
+        self.assertIn("room", response.context["form"].errors)
+        self.assertFalse(Allocation.objects.exists())
 
     def test_full_room_cannot_receive_second_allocation(self):
         other_user = User.objects.create_user(
@@ -1563,6 +1587,20 @@ class AllocationServiceTests(TestCase):
             "This student already has an active allocation.",
         ):
             allocate_student(self.student_one.pk, other_room.pk)
+
+    def test_service_rejects_nonexistent_student(self):
+        with self.assertRaisesMessage(
+            ValidationError,
+            "The requested student does not exist.",
+        ):
+            allocate_student(student_id=999999, room_id=self.room.pk)
+
+    def test_service_rejects_nonexistent_room(self):
+        with self.assertRaisesMessage(
+            ValidationError,
+            "The requested room does not exist.",
+        ):
+            allocate_student(student_id=self.student_one.pk, room_id=999999)
 
     @patch(
         "core.services.allocate_student",
