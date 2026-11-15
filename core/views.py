@@ -1,6 +1,7 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.core.exceptions import ValidationError
+from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
@@ -29,8 +30,8 @@ from .models import (
     User,
     get_user_role,
 )
-from .services import allocate_student, transfer_student
 from .permissions import role_required
+from .services import allocate_student, record_audit, transfer_student
 
 
 def staff_required(view_func):
@@ -46,13 +47,7 @@ def staff_required(view_func):
 
 
 def audit(action, instance, request, details=None):
-    AuditLog.objects.create(
-        actor=request.user if request.user.is_authenticated else None,
-        action=action,
-        model_name=instance.__class__.__name__,
-        object_id=str(instance.pk) if instance.pk else "",
-        details=details or {},
-    )
+    return record_audit(action, instance, request.user, details)
 
 
 @login_required
@@ -212,6 +207,7 @@ def block_update(request, pk):
 
 @login_required
 @staff_required
+@transaction.atomic
 def room_create(request):
     form = RoomForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
@@ -261,6 +257,18 @@ def allocation_list(request):
         "core/allocation_list.html",
         {"allocations": allocations},
     )
+
+
+@role_required(
+    User.Role.WARDEN,
+    User.Role.HOSTEL_ADMIN,
+    User.Role.SYSTEM_ADMIN,
+)
+@require_http_methods(["GET"])
+def audit_log_list(request):
+    logs = AuditLog.objects.select_related("actor")
+    page = Paginator(logs, 50).get_page(request.GET.get("page"))
+    return render(request, "core/audit_log_list.html", {"page": page})
 
 
 @role_required(
@@ -613,6 +621,15 @@ def transfer_review(request, pk, decision):
             )
             return redirect("transfer_list")
 
+        old_allocation = (
+            Allocation.objects.select_for_update()
+            .filter(
+                student=transfer.student,
+                status=Allocation.Status.ACTIVE,
+            )
+            .select_related("room")
+            .first()
+        )
         try:
             new_allocation = transfer_student(
                 student_id=transfer.student_id,
@@ -623,7 +640,29 @@ def transfer_review(request, pk, decision):
             return redirect("transfer_list")
 
         room = new_allocation.room
-        audit("allocated", new_allocation, request, {"room": str(room)})
+        if old_allocation:
+            audit(
+                "transferred_out",
+                old_allocation,
+                request,
+                {
+                    "from_room": str(old_allocation.room),
+                    "to_room": str(room),
+                    "new_allocation_id": str(new_allocation.pk),
+                },
+            )
+            audit(
+                "transferred_in",
+                new_allocation,
+                request,
+                {
+                    "from_room": str(old_allocation.room),
+                    "to_room": str(room),
+                    "previous_allocation_id": str(old_allocation.pk),
+                },
+            )
+        else:
+            audit("allocated", new_allocation, request, {"room": str(room)})
         transfer.student.hostel_name = room.block.hostel.name
         transfer.student.room_number = room.room_number
         transfer.student.save(

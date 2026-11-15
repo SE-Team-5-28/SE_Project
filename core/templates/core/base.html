@@ -50,6 +50,10 @@
                     Pending Requests
                 </a>
 
+                <a href="{% url 'audit_log_list' %}">
+                    Audit log
+                </a>
+
             {% elif user_role == 'STUDENT' %}
 
                 <a href="{% url 'transfer_create' %}">

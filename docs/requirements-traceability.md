@@ -8,7 +8,7 @@
 | Complete approved room transfers (#39) | Atomic allocation swap, locked destination-capacity check, and staff approval action | `test_student_can_submit_and_staff_can_approve_transfer`, `test_approval_rejects_full_destination_without_partial_transfer`, `test_transfer_rolls_back_old_allocation_when_new_allocation_fails` |
 | Responsive base layout and role dashboards (#33) | `base.html`, responsive CSS, staff/student navigation | Template smoke coverage through Django tests |
 | Secure hashing and sessions (#19) | Django password hasher, HTTP-only/SameSite session cookies, CSRF middleware | Existing login tests plus `manage.py check --deploy` in production configuration |
-| Audit administrative actions (#18) | Immutable read-only `AuditLog` admin and audit helper | Allocation and transfer tests assert audit records |
+| Audit administrative actions (#18) | Actor/timestamp audit events for room and allocation operations; role-restricted, read-only audit screen and Django admin | `HostelOperationsTests`, `StudentCheckInOutTests`, `AuditLogAccessTests` |
 | HTTPS/TLS deployment (#21) | Nginx TLS proxy, Gunicorn systemd unit, secure Django settings | `deploy/README.md` deployment checklist |
 
 ## Scope deviations
@@ -32,7 +32,7 @@ python manage.py check --deploy
 | TC-SEC-04 | HTTPS | `HttpsProxySecurityTests`: forwarded HTTPS is accepted without a redirect loop; HTTP redirects to HTTPS | Pass |
 | TC-SEC-05 | Input validation | `InputValidationSecurityTests`: injection strings, malformed values, oversized values, and invalid create requests are rejected | Pass |
 
-Execution: `python manage.py test` found 73 tests; all passed, with one MySQL-only concurrency test skipped on SQLite. The HTTPS checks exercise Django behind the configured Nginx proxy; a live TLS handshake was not run because no deployment certificate or server is available in this test environment.
+Execution: `python manage.py test` found 99 tests; all passed, with one MySQL-only concurrency test skipped on SQLite. The HTTPS checks exercise Django behind the configured Nginx proxy; a live TLS handshake was not run because no deployment certificate or server is available in this test environment.
 
 ## Sprint 1 test coverage (#34)
 

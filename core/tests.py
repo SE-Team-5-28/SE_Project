@@ -260,6 +260,7 @@ class HostelOperationsTests(TestCase):
 
     def test_staff_can_create_room_and_audit_action(self):
         self.client.force_login(self.staff)
+        started_at = timezone.now()
 
         response = self.client.post(
             reverse("room_create"),
@@ -275,13 +276,14 @@ class HostelOperationsTests(TestCase):
         room = Room.objects.get(room_code="NORTH-A-102")
         self.assertEqual(room.block, self.block)
         self.assertEqual(room.capacity, 2)
-        self.assertTrue(
-            AuditLog.objects.filter(
-                action="created",
-                model_name="Room",
-                object_id=str(room.pk),
-            ).exists()
+        entry = AuditLog.objects.get(
+            action="created",
+            model_name="Room",
+            object_id=str(room.pk),
         )
+        self.assertEqual(entry.actor, self.staff)
+        self.assertGreaterEqual(entry.created_at, started_at)
+        self.assertLessEqual(entry.created_at, timezone.now())
 
     def test_staff_can_create_hostel_and_block_records(self):
         self.client.force_login(self.staff)
@@ -320,6 +322,12 @@ class HostelOperationsTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("capacity", response.context["form"].errors)
         self.assertFalse(Room.objects.filter(number="102").exists())
+        self.assertFalse(
+            AuditLog.objects.filter(
+                action="created",
+                model_name="Room",
+            ).exists()
+        )
 
     def test_staff_can_update_hostel_block_and_room_records(self):
         self.client.force_login(self.staff)
@@ -346,6 +354,7 @@ class HostelOperationsTests(TestCase):
         self.assertEqual(self.block.name, "West")
         self.assertEqual(self.block.description, "Updated block")
 
+        started_at = timezone.now()
         room_response = self.client.post(
             reverse("room_update", args=[self.room.pk]),
             {
@@ -362,6 +371,14 @@ class HostelOperationsTests(TestCase):
         self.assertEqual(self.room.room_code, "NORTH-WEST-202")
         self.assertEqual(self.room.capacity, 3)
         self.assertEqual(self.room.description, "Updated room")
+        room_update = AuditLog.objects.get(
+            action="updated",
+            model_name="Room",
+            object_id=str(self.room.pk),
+        )
+        self.assertEqual(room_update.actor, self.staff)
+        self.assertGreaterEqual(room_update.created_at, started_at)
+        self.assertLessEqual(room_update.created_at, timezone.now())
         self.assertEqual(
             AuditLog.objects.filter(action="updated").count(),
             3,
@@ -475,6 +492,7 @@ class HostelOperationsTests(TestCase):
 
     def test_staff_can_allocate_available_room_and_audit_action(self):
         self.client.force_login(self.staff)
+        started_at = timezone.now()
         response = self.client.post(
             reverse("allocation_create"),
             {"student": self.student.pk, "room": self.room.pk},
@@ -486,7 +504,15 @@ class HostelOperationsTests(TestCase):
                 status=Allocation.Status.ACTIVE,
             ).exists()
         )
-        self.assertTrue(AuditLog.objects.filter(action="allocated").exists())
+        allocation = Allocation.objects.get(student=self.student)
+        entry = AuditLog.objects.get(
+            action="allocated",
+            model_name="Allocation",
+            object_id=str(allocation.pk),
+        )
+        self.assertEqual(entry.actor, self.staff)
+        self.assertGreaterEqual(entry.created_at, started_at)
+        self.assertLessEqual(entry.created_at, timezone.now())
 
     def test_full_room_cannot_receive_second_allocation(self):
         other_user = User.objects.create_user(
@@ -503,6 +529,12 @@ class HostelOperationsTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertFalse(Allocation.objects.filter(student=other).exists())
+        self.assertFalse(
+            AuditLog.objects.filter(
+                action="allocated",
+                model_name="Allocation",
+            ).exists()
+        )
 
     def test_student_cannot_be_allocated_to_a_second_room(self):
         other_room = Room.objects.create(
@@ -561,6 +593,7 @@ class HostelOperationsTests(TestCase):
             response,
             reverse("transfer_review", args=[transfer.pk, "approve"]),
         )
+        started_at = timezone.now()
         response = self.client.post(
             reverse("transfer_review", args=[transfer.pk, "approve"])
         )
@@ -579,6 +612,28 @@ class HostelOperationsTests(TestCase):
         self.assertEqual(destination.occupied_count, 1)
         self.student.refresh_from_db()
         self.assertEqual(self.student.room_number, destination.room_number)
+        old_allocation = Allocation.objects.get(
+            student=self.student,
+            room=self.room,
+        )
+        new_allocation = Allocation.objects.get(
+            student=self.student,
+            room=destination,
+        )
+        transfer_out_log = AuditLog.objects.get(
+            action="transferred_out",
+            object_id=str(old_allocation.pk),
+        )
+        transfer_in_log = AuditLog.objects.get(
+            action="transferred_in",
+            object_id=str(new_allocation.pk),
+        )
+        self.assertEqual(transfer_out_log.actor, self.staff)
+        self.assertEqual(transfer_in_log.actor, self.staff)
+        self.assertGreaterEqual(transfer_out_log.created_at, started_at)
+        self.assertGreaterEqual(transfer_in_log.created_at, started_at)
+        self.assertEqual(transfer_out_log.details["to_room"], str(destination))
+        self.assertEqual(transfer_in_log.details["from_room"], str(self.room))
 
     def test_student_transfer_history_only_contains_own_requests(self):
         own_request = TransferRequest.objects.create(
@@ -708,6 +763,11 @@ class HostelOperationsTests(TestCase):
             ).exists()
         )
         self.assertEqual(self.student.room_number, self.room.room_number)
+        self.assertFalse(
+            AuditLog.objects.filter(
+                action__in=["transferred_out", "transferred_in"],
+            ).exists()
+        )
 
 
 class ComplaintSubmissionTests(TestCase):
@@ -949,6 +1009,7 @@ class StudentCheckInOutTests(TestCase):
 
     def test_check_out_updates_stay_status_and_occupancy(self):
         self.client.force_login(self.warden)
+        started_at = timezone.now()
         response = self.client.post(
             reverse("check_out", args=[self.allocation.pk])
         )
@@ -957,18 +1018,20 @@ class StudentCheckInOutTests(TestCase):
         self.assertEqual(self.allocation.status, Allocation.Status.COMPLETED)
         self.assertIsNotNone(self.allocation.check_out_date)
         self.assertEqual(self.room.occupied_count, 0)
-        self.assertTrue(
-            AuditLog.objects.filter(
-                action="checked_out",
-                object_id=str(self.allocation.pk),
-            ).exists()
+        entry = AuditLog.objects.get(
+            action="checked_out",
+            object_id=str(self.allocation.pk),
         )
+        self.assertEqual(entry.actor, self.warden)
+        self.assertGreaterEqual(entry.created_at, started_at)
+        self.assertLessEqual(entry.created_at, timezone.now())
 
     def test_check_in_reactivates_previous_allocation(self):
         self.allocation.status = Allocation.Status.COMPLETED
         self.allocation.check_out_date = timezone.localdate()
         self.allocation.save()
         self.client.force_login(self.warden)
+        started_at = timezone.now()
         response = self.client.post(
             reverse("check_in", args=[self.allocation.pk])
         )
@@ -977,6 +1040,13 @@ class StudentCheckInOutTests(TestCase):
         self.assertEqual(self.allocation.status, Allocation.Status.ACTIVE)
         self.assertIsNone(self.allocation.check_out_date)
         self.assertEqual(self.room.available_spaces, 1)
+        entry = AuditLog.objects.get(
+            action="checked_in",
+            object_id=str(self.allocation.pk),
+        )
+        self.assertEqual(entry.actor, self.warden)
+        self.assertGreaterEqual(entry.created_at, started_at)
+        self.assertLessEqual(entry.created_at, timezone.now())
 
     def test_non_staff_cannot_check_out_student(self):
         self.client.force_login(self.normal_user)
@@ -1037,6 +1107,162 @@ class StudentCheckInOutTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.allocation.refresh_from_db()
         self.assertEqual(self.allocation.status, Allocation.Status.ACTIVE)
+
+
+class AuditLogAccessTests(TestCase):
+    def setUp(self):
+        self.staff = User.objects.create_user(
+            username="audit_staff",
+            is_staff=True,
+        )
+        self.student = User.objects.create_user(
+            username="audit_student",
+        )
+        UserRole.objects.create(user=self.student, role=UserRole.Role.STUDENT)
+        self.entry = AuditLog.objects.create(
+            actor=self.staff,
+            action="updated",
+            model_name="Room",
+            object_id="7",
+            details={"capacity": 4},
+        )
+
+    def test_staff_can_view_audit_logs_through_the_application(self):
+        self.client.force_login(self.staff)
+
+        response = self.client.get(reverse("audit_log_list"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.staff.username)
+        self.assertContains(response, "updated")
+        self.assertContains(response, "Room #7")
+        self.assertContains(response, "capacity")
+
+    def test_students_cannot_view_or_change_audit_logs(self):
+        self.client.force_login(self.student)
+
+        response = self.client.get(reverse("audit_log_list"))
+        post_response = self.client.post(
+            reverse("audit_log_list"),
+            {"action": "tampered"},
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(post_response.status_code, 403)
+        self.entry.refresh_from_db()
+        self.assertEqual(self.entry.action, "updated")
+        self.assertEqual(AuditLog.objects.count(), 1)
+
+    def test_audit_list_does_not_accept_writes(self):
+        self.client.force_login(self.staff)
+
+        response = self.client.post(
+            reverse("audit_log_list"),
+            {"action": "tampered"},
+        )
+
+        self.assertEqual(response.status_code, 405)
+        self.entry.refresh_from_db()
+        self.assertEqual(self.entry.action, "updated")
+
+    def test_staff_can_view_but_not_change_audit_logs_in_admin(self):
+        self.client.force_login(self.staff)
+        change_url = reverse(
+            "admin:core_auditlog_change",
+            args=[self.entry.pk],
+        )
+
+        self.assertEqual(
+            self.client.get(reverse("admin:core_auditlog_changelist")).status_code,
+            200,
+        )
+        self.assertEqual(self.client.get(change_url).status_code, 200)
+        self.assertEqual(
+            self.client.post(change_url, {"action": "tampered"}).status_code,
+            403,
+        )
+        self.assertEqual(
+            self.client.get(reverse("admin:core_auditlog_add")).status_code,
+            403,
+        )
+        self.assertEqual(
+            self.client.get(
+                reverse("admin:core_auditlog_delete", args=[self.entry.pk])
+            ).status_code,
+            403,
+        )
+
+        self.entry.refresh_from_db()
+        self.assertEqual(self.entry.action, "updated")
+        self.assertEqual(AuditLog.objects.count(), 1)
+
+    def test_student_role_cannot_view_audit_logs_in_admin(self):
+        staff_student = User.objects.create_user(
+            username="staff_student",
+            is_staff=True,
+        )
+        UserRole.objects.create(
+            user=staff_student,
+            role=UserRole.Role.STUDENT,
+        )
+        self.client.force_login(staff_student)
+
+        response = self.client.get(
+            reverse("admin:core_auditlog_changelist")
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(AuditLog.objects.count(), 1)
+
+    def test_room_and_allocation_admin_changes_are_audited(self):
+        admin_user = User.objects.create_superuser(
+            username="audit_system_admin",
+            password="test-password",
+        )
+        hostel = Hostel.objects.create(name="Admin Audit Hostel")
+        block = Block.objects.create(hostel=hostel, name="A")
+        room = Room.objects.create(
+            block=block,
+            number="101",
+            room_code="ADMIN-A-101",
+            capacity=2,
+        )
+        student = Student.objects.create(student_id="ADMIN-STU-01")
+        self.client.force_login(admin_user)
+
+        started_at = timezone.now()
+        room_response = self.client.post(
+            reverse("admin:core_room_change", args=[room.pk]),
+            {
+                "block": block.pk,
+                "number": room.number,
+                "room_code": room.room_code,
+                "capacity": room.capacity,
+                "description": room.description,
+            },
+        )
+        self.assertEqual(room_response.status_code, 302)
+        room_entry = AuditLog.objects.get(
+            action="updated",
+            model_name="Room",
+            object_id=str(room.pk),
+        )
+        self.assertEqual(room_entry.actor, admin_user)
+        self.assertGreaterEqual(room_entry.created_at, started_at)
+
+        allocation_response = self.client.post(
+            reverse("admin:core_allocation_add"),
+            {"student": student.pk, "room": room.pk},
+        )
+        self.assertEqual(allocation_response.status_code, 302)
+        allocation = Allocation.objects.get(student=student)
+        allocation_entry = AuditLog.objects.get(
+            action="allocated",
+            model_name="Allocation",
+            object_id=str(allocation.pk),
+        )
+        self.assertEqual(allocation_entry.actor, admin_user)
+        self.assertGreaterEqual(allocation_entry.created_at, started_at)
 
 
 class CoreModelTests(TestCase):
