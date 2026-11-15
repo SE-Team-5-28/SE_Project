@@ -2,7 +2,17 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
-from .models import Allocation, Room, Student
+from .models import Allocation, AuditLog, Room, Student
+
+
+def record_audit(action, instance, actor, details=None):
+    return AuditLog.objects.create(
+        actor=actor,
+        action=action,
+        model_name=instance.__class__.__name__,
+        object_id=str(instance.pk) if instance.pk else "",
+        details=details or {},
+    )
 
 
 @transaction.atomic

@@ -1,0 +1,48 @@
+{% extends "core/base.html" %}
+
+{% block title %}Audit log{% endblock %}
+
+{% block content %}
+    <h1>Audit log</h1>
+
+    {% if page.object_list %}
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>Actor</th>
+                        <th>Action</th>
+                        <th>Record</th>
+                        <th>Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for entry in page.object_list %}
+                        <tr>
+                            <td>{{ entry.created_at }}</td>
+                            <td>{{ entry.actor|default:"Deleted user" }}</td>
+                            <td>{{ entry.action }}</td>
+                            <td>{{ entry.model_name }} #{{ entry.object_id }}</td>
+                            <td>{{ entry.details }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p>No audit events have been recorded.</p>
+    {% endif %}
+
+    {% if page.has_other_pages %}
+        <nav aria-label="Audit log pages">
+            {% if page.has_previous %}
+                <a href="?page={{ page.previous_page_number }}">Previous</a>
+            {% endif %}
+            <span>Page {{ page.number }} of {{ page.paginator.num_pages }}</span>
+            {% if page.has_next %}
+                <a href="?page={{ page.next_page_number }}">Next</a>
+            {% endif %}
+        </nav>
+    {% endif %}
+{% endblock %}

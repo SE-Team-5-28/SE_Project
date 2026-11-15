@@ -43,6 +43,7 @@ urlpatterns = [
         name="room_update",
     ),
     path("allocations/", views.allocation_list, name="allocation_list"),
+    path("audit-logs/", views.audit_log_list, name="audit_log_list"),
     path(
         "reports/occupancy/",
         views.occupancy_report,
