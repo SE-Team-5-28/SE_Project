@@ -114,6 +114,61 @@ class RoleBasedAccessTests(TestCase):
                 response = self.client.get(reverse("occupancy_report"))
                 self.assertEqual(response.status_code, 200)
 
+    def test_staff_roles_can_list_pending_transfer_requests(self):
+        hostel = Hostel.objects.create(name="Transfer Access Hostel")
+        block = Block.objects.create(hostel=hostel, name="A")
+        room = Room.objects.create(block=block, number="101", capacity=1)
+        student = Student.objects.create(
+            user=self.student,
+            student_id="TRANSFER-ACCESS-001",
+        )
+        transfer = TransferRequest.objects.create(
+            student=student,
+            requested_room=room,
+            reason="Transfer access test",
+        )
+
+        for user in (self.warden, self.hostel_admin, self.system_admin):
+            with self.subTest(role=user.role):
+                self.client.force_login(user)
+                response = self.client.get(reverse("transfer_list"))
+                self.assertEqual(response.status_code, 200)
+                self.assertContains(response, str(transfer.pk))
+                self.assertContains(response, "Pending")
+
+    def test_student_cannot_review_transfer_with_direct_posts(self):
+        hostel = Hostel.objects.create(name="Transfer Access Hostel")
+        block = Block.objects.create(hostel=hostel, name="A")
+        room = Room.objects.create(block=block, number="101", capacity=1)
+        student = Student.objects.create(
+            user=self.student,
+            student_id="TRANSFER-ACCESS-001",
+        )
+        transfer = TransferRequest.objects.create(
+            student=student,
+            requested_room=room,
+            reason="Transfer access test",
+        )
+        self.client.force_login(self.student)
+
+        for decision in ("approve", "reject"):
+            with self.subTest(decision=decision):
+                response = self.client.post(
+                    reverse(
+                        "transfer_review",
+                        args=[transfer.pk, decision],
+                    )
+                )
+                self.assertEqual(response.status_code, 302)
+
+        transfer.refresh_from_db()
+        self.assertEqual(transfer.status, TransferRequest.Status.PENDING)
+        self.assertIsNone(transfer.reviewed_by)
+        self.assertIsNone(transfer.reviewed_at)
+        self.assertFalse(
+            student.allocations.filter(status="ACTIVE").exists()
+        )
+
     def test_student_cannot_access_occupancy_report(self):
         self.client.force_login(self.student)
 
