@@ -5,6 +5,8 @@ Django settings for config project.
 
 import os
 from pathlib import Path
+
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 # Build paths inside the project
@@ -15,9 +17,17 @@ load_dotenv(BASE_DIR / ".env")
 
 
 # Security settings
-SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "dev-only-change-me")
+DEBUG = os.getenv("DJANGO_DEBUG", "True").lower() == "true"
 
-DEBUG = os.getenv("DJANGO_DEBUG", "False").lower() == "true"
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "")
+if DEBUG:
+    SECRET_KEY = SECRET_KEY or "local-development-only-insecure-secret"
+elif len(SECRET_KEY) < 50 or len(set(SECRET_KEY)) < 16:
+    raise ImproperlyConfigured(
+        "DJANGO_SECRET_KEY must be externally supplied and contain at least "
+        "50 characters with at least 16 distinct characters when "
+        "DJANGO_DEBUG is False."
+    )
 
 ALLOWED_HOSTS = [
     host.strip()
@@ -124,16 +134,32 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_SAMESITE = "Lax"
-SESSION_COOKIE_SECURE = os.getenv("DJANGO_COOKIE_SECURE", "False").lower() == "true"
-CSRF_COOKIE_SECURE = SESSION_COOKIE_SECURE
+SESSION_COOKIE_AGE = 60 * 60
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+SESSION_SAVE_EVERY_REQUEST = True
+SESSION_COOKIE_SECURE = (
+    not DEBUG or os.getenv("DJANGO_COOKIE_SECURE", "False").lower() == "true"
+)
+CSRF_COOKIE_SECURE = (
+    not DEBUG or os.getenv("DJANGO_COOKIE_SECURE", "False").lower() == "true"
+)
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_REFERRER_POLICY = "same-origin"
 SECURE_HSTS_SECONDS = int(os.getenv("DJANGO_HSTS_SECONDS", "0"))
-SECURE_HSTS_INCLUDE_SUBDOMAINS = SECURE_HSTS_SECONDS > 0
-SECURE_HSTS_PRELOAD = SECURE_HSTS_SECONDS > 0
-SECURE_SSL_REDIRECT = os.getenv("DJANGO_SECURE_SSL_REDIRECT", "False").lower() == "true"
-SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+SECURE_HSTS_INCLUDE_SUBDOMAINS = (
+    os.getenv("DJANGO_HSTS_INCLUDE_SUBDOMAINS", "False").lower() == "true"
+)
+SECURE_HSTS_PRELOAD = os.getenv("DJANGO_HSTS_PRELOAD", "False").lower() == "true"
+SECURE_SSL_REDIRECT = (
+    not DEBUG
+    or os.getenv("DJANGO_SECURE_SSL_REDIRECT", "False").lower() == "true"
+)
+SECURE_PROXY_SSL_HEADER = (
+    ("HTTP_X_FORWARDED_PROTO", "https")
+    if os.getenv("DJANGO_TRUST_PROXY_SSL_HEADER", "False").lower() == "true"
+    else None
+)
 
 
 # Email configuration: console backend for development
