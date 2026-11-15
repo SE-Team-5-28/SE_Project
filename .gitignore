@@ -21,3 +21,5 @@ staticfiles/
 
 # Codex/local dependency scratch space
 work/
+
+deploy/health-check.log
