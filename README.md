@@ -214,6 +214,15 @@ is not MySQL. `python manage.py check --deploy` can report production
 configuration warnings, but passing it alone does not establish that a live
 deployment is secure or available.
 
+Run the bounded local performance scenario and retain its JSON result with:
+
+```sh
+python manage.py performance_check
+```
+
+The scenario, result, and environment limitations are documented in
+[Performance check (TC-Perf-01)](docs/performance-checks.md).
+
 ## Deployment notes
 
 `requirements-production.txt` adds Gunicorn. The files in `deploy/` are example
@@ -236,6 +245,8 @@ docs/Hostel_Management_System_SRS.pdf
 docs/Hostel_Management_System_SAD.docx
 docs/Hostel_Management_System_Test_Plan.pdf
 docs/architecture-deviations.md Current implementation compared with the submitted design
+docs/performance-checks.md       TC-Perf-01 scenario, results, and limitations
+docs/performance-results.json    Retained local benchmark measurements
 docs/requirements-traceability.md Requirements, implementation, and test references
 deploy/                         Example production-like configuration templates
 requirements.txt                Local and CI Python dependencies
