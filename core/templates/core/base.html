@@ -1,101 +1,63 @@
 {% load static %}
-
 <!doctype html>
 <html lang="en">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-
-    <title>
-        {% block title %}Hostel Management{% endblock %}
-    </title>
-
+    <title>{% block title %}Hostel Management{% endblock %}</title>
     <link rel="stylesheet" href="{% static 'core/site.css' %}">
 </head>
-
 <body>
+    <a class="skip-link" href="#main-content">Skip to content</a>
+    <header class="topbar">
+        <a class="brand" href="{% url 'dashboard' %}">Hostel Management</a>
 
-<header class="topbar">
+        {% if request.user.is_authenticated %}
+            <nav aria-label="Main navigation">
+                <a href="{% url 'dashboard' %}">Overview</a>
 
-    <a class="brand" href="{% url 'dashboard' %}">
-        Hostel Management
-    </a>
+                {% if user_role == 'STUDENT' %}
+                    <a href="{% url 'student_dashboard' %}">Student dashboard</a>
+                    <a href="{% url 'transfer_create' %}">Request transfer</a>
+                    <a href="{% url 'my_transfer_requests' %}">My transfer requests</a>
+                    <a href="{% url 'complaint_create' %}">Submit complaint</a>
+                    <a href="{% url 'complaint_list' %}">My complaints</a>
+                {% elif is_staff_role %}
+                    {% if user_role == 'WARDEN' %}
+                        <a href="{% url 'warden_dashboard' %}">Warden dashboard</a>
+                    {% else %}
+                        <a href="{% url 'administrator_dashboard' %}">Administrator dashboard</a>
+                    {% endif %}
+                    <a href="{% url 'student_list' %}">Students</a>
+                    <a href="{% url 'hostel_list' %}">Hostels &amp; rooms</a>
+                    <a href="{% url 'allocation_list' %}">Allocations</a>
+                    <a href="{% url 'occupancy_report' %}">Occupancy report</a>
+                    <a href="{% url 'transfer_list' %}">Transfers</a>
+                    <a href="{% url 'pending_requests' %}">Pending requests</a>
+                    <a href="{% url 'audit_log_list' %}">Audit log</a>
+                {% endif %}
+            </nav>
 
-    {% if request.user.is_authenticated %}
+            <form method="post" action="{% url 'logout' %}">
+                {% csrf_token %}
+                <button class="link-button" type="submit">Log out</button>
+            </form>
+        {% endif %}
+    </header>
 
-        <nav>
-            <a href="{% url 'dashboard' %}">Dashboard</a>
+    <main class="container" id="main-content">
+        {% for message in messages %}
+            <div class="message {{ message.tags }}"
+                 {% if 'error' in message.tags or 'warning' in message.tags %}
+                     role="alert" aria-live="assertive"
+                 {% else %}
+                     role="status" aria-live="polite"
+                 {% endif %}>
+                {{ message }}
+            </div>
+        {% endfor %}
 
-            {% if is_staff_role %}
-
-                <a href="{% url 'student_list' %}">Students</a>
-
-                <a href="{% url 'hostel_list' %}">
-                    Hostels & rooms
-                </a>
-
-                <a href="{% url 'allocation_list' %}">
-                    Allocations
-                </a>
-
-                <a href="{% url 'occupancy_report' %}">
-                    Occupancy report
-                </a>
-
-                <a href="{% url 'transfer_list' %}">
-                    Transfers
-                </a>
-
-                <a href="{% url 'pending_requests' %}">
-                    Pending Requests
-                </a>
-
-                <a href="{% url 'audit_log_list' %}">
-                    Audit log
-                </a>
-
-            {% elif user_role == 'STUDENT' %}
-
-                <a href="{% url 'transfer_create' %}">
-                    Request transfer
-                </a>
-
-                <a href="{% url 'my_transfer_requests' %}">
-                    My transfer requests
-                </a>
-
-                <a href="{% url 'complaint_create' %}">
-                    Submit complaint
-                </a>
-
-                <a href="{% url 'complaint_list' %}">
-                    My complaints
-                </a>
-
-            {% endif %}
-        </nav>
-
-        <form method="post" action="{% url 'logout' %}">
-            {% csrf_token %}
-            <button class="link-button">Log out</button>
-        </form>
-
-    {% endif %}
-
-</header>
-
-<main class="container">
-
-    {% for message in messages %}
-        <div class="message">
-            {{ message }}
-        </div>
-    {% endfor %}
-
-    {% block content %}
-    {% endblock %}
-
-</main>
-
+        {% block content %}{% endblock %}
+    </main>
 </body>
 </html>
