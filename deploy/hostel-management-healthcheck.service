@@ -1,0 +1,7 @@
+[Unit]
+Description=Check the Hostel Management application health endpoint
+
+[Service]
+Type=oneshot
+Environment=HEALTHCHECK_URL=http://127.0.0.1:8000/healthz
+ExecStart=/bin/sh /srv/hostel-management/deploy/health-check.sh

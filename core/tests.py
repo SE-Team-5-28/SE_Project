@@ -98,6 +98,19 @@ class HttpsProxySecurityTests(SimpleTestCase):
         )
 
 
+class HealthCheckTests(SimpleTestCase):
+    def test_health_endpoint_is_public_and_returns_ok(self):
+        response = self.client.get(reverse("healthz"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"status": "ok"})
+
+    def test_health_endpoint_rejects_non_get_requests(self):
+        response = self.client.post(reverse("healthz"))
+
+        self.assertEqual(response.status_code, 405)
+
+
 class StudentRecordTests(TestCase):
     @classmethod
     def setUpTestData(cls):

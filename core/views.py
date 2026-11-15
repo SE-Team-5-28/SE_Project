@@ -4,10 +4,11 @@ from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Count, Q
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
-from django.views.decorators.http import require_http_methods, require_POST
+from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from .forms import (
     AllocationForm,
@@ -49,6 +50,11 @@ def staff_required(view_func):
 
 def audit(action, instance, request, details=None):
     return record_audit(action, instance, request.user, details)
+
+
+@require_GET
+def healthz(request):
+    return JsonResponse({"status": "ok"})
 
 
 @login_required

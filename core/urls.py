@@ -5,6 +5,7 @@ from . import views
 
 
 urlpatterns = [
+    path("healthz", views.healthz, name="healthz"),
     path(
         "login/",
         auth_views.LoginView.as_view(template_name="core/login.html"),

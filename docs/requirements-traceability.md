@@ -10,6 +10,7 @@
 | Secure hashing and sessions (#19) | Django password hasher, HTTP-only/SameSite session cookies, CSRF middleware, production secret validation | `AuthenticationWorkflowTests`, `PasswordHashingTests`, `ProtectedSessionWorkflowTests`, `ProductionSettingsTests` |
 | Audit administrative actions (#18) | Actor/timestamp audit events for room and allocation operations; role-restricted, read-only audit screen and Django admin | `HostelOperationsTests`, `StudentCheckInOutTests`, `AuditLogAccessTests` |
 | HTTPS/TLS deployment (#21) | Example Nginx TLS proxy, Gunicorn systemd unit, and configurable Django security settings | Django forwarded-protocol/redirect tests and deployment-template review; no live TLS deployment verified |
+| Availability monitoring and recovery (#6) | Public `GET /healthz`; installable systemd timer logs local probes and restarts the application after failed checks; manual recovery procedure in `deploy/README.md` | Health endpoint tests and deployment-template review; no monitor is deployed and no monthly uptime evidence is available |
 
 ## Scope deviations
 
@@ -46,7 +47,7 @@ live production deployment.
 | TC-SEC-04 | HTTPS | `HttpsProxySecurityTests`: forwarded HTTPS is accepted without a redirect loop; HTTP redirects to HTTPS | Pass |
 | TC-SEC-05 | Input validation | `InputValidationSecurityTests`: injection strings, malformed values, oversized values, and invalid create requests are rejected | Pass |
 
-Execution: `python manage.py test` found 114 tests; all passed, with one
+Execution: `python manage.py test` found 119 tests; all passed, with one
 MySQL-only concurrency test skipped on SQLite. The HTTPS tests exercise
 Django's forwarded-protocol and redirect handling; they do not run Nginx or
 perform a live TLS handshake. No deployment certificate or server is available
