@@ -22,13 +22,13 @@ server-rendered staff operations:
 
 | Operation | Measured requests | p90 |
 | --- | ---: | ---: |
-| Staff dashboard | 20 | 50.026 ms |
-| Student list | 20 | 203.792 ms |
-| Hostel list | 20 | 891.446 ms |
-| Allocation list | 20 | 130.604 ms |
-| Occupancy report | 20 | 84.218 ms |
-| Pending requests | 20 | 209.223 ms |
-| **Overall** | **120** | **704.483 ms** |
+| Staff dashboard | 20 | 54.943 ms |
+| Student list | 20 | 222.704 ms |
+| Hostel list | 20 | 982.040 ms |
+| Allocation list | 20 | 138.214 ms |
+| Occupancy report | 20 | 82.242 ms |
+| Pending requests | 20 | 203.937 ms |
+| **Overall** | **120** | **740.134 ms** |
 
 The p90 uses the nearest-rank method. A run passes only when every measured and
 warm-up request returns HTTP 200 and both the overall and each operation's p90
@@ -39,11 +39,11 @@ exit.
 ## Recorded run
 
 The retained result in [`performance-results.json`](performance-results.json)
-was collected on 2026-11-15 at 09:29 UTC: Windows 10, Python 3.11.2, Django
-5.2.18, and 12 reported logical CPUs. The 120-request measured phase took 6.65
-seconds. Overall median was 128.191 ms, p90 704.483 ms, p95 750.353 ms, and
-maximum 955.769 ms. There were no HTTP or warm-up failures; all six operations
-and the overall result met the 3-second threshold.
+was collected on 2026-11-15 at 09:35 UTC: Windows 10, Python 3.11.2, Django
+5.2.18, and 12 reported logical CPUs. The 120-request measured phase took 6.93
+seconds. Overall median was 133.397 ms, p90 740.134 ms, p95 823.846 ms, and
+maximum 1,046.521 ms. There were no HTTP or warm-up failures; all six
+operations and the overall result met the 3-second threshold.
 
 ## Scope and limitations
 
