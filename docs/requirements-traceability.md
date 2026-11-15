@@ -47,7 +47,7 @@ live production deployment.
 | TC-SEC-04 | HTTPS | `HttpsProxySecurityTests`: forwarded HTTPS is accepted without a redirect loop; HTTP redirects to HTTPS | Pass |
 | TC-SEC-05 | Input validation | `InputValidationSecurityTests`: injection strings, malformed values, oversized values, and invalid create requests are rejected | Pass |
 
-Execution: `python manage.py test` found 119 tests; all passed, with one
+Execution: `python manage.py test` found 122 tests; all passed, with one
 MySQL-only concurrency test skipped on SQLite. The HTTPS tests exercise
 Django's forwarded-protocol and redirect handling; they do not run Nginx or
 perform a live TLS handshake. No deployment certificate or server is available

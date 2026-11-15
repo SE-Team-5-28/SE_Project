@@ -155,11 +155,13 @@ SECURE_SSL_REDIRECT = (
     not DEBUG
     or os.getenv("DJANGO_SECURE_SSL_REDIRECT", "False").lower() == "true"
 )
-SECURE_PROXY_SSL_HEADER = (
-    ("HTTP_X_FORWARDED_PROTO", "https")
-    if os.getenv("DJANGO_TRUST_PROXY_SSL_HEADER", "False").lower() == "true"
-    else None
+TRUST_PROXY_HEADERS = (
+    os.getenv("DJANGO_TRUST_PROXY_SSL_HEADER", "False").lower() == "true"
 )
+SECURE_PROXY_SSL_HEADER = (
+    ("HTTP_X_FORWARDED_PROTO", "https") if TRUST_PROXY_HEADERS else None
+)
+USE_X_FORWARDED_HOST = TRUST_PROXY_HEADERS
 
 
 # Email configuration: console backend for development
