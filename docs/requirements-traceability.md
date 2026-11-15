@@ -37,7 +37,7 @@ unless the stated environment and measurement were actually exercised.
 | HMS-SR-001 | Require authentication for protected student and administrative functions. | #3, #8 | Django authentication views and `login_required`/role guards in `core/views.py` and `core/permissions.py`. | TC-SEC-01; `RoleBasedAccessTests.test_anonymous_user_is_redirected_to_login` and anonymous-access tests — **Pass (CI)**. |
 | HMS-SR-002 | Enforce role-based authorization for Student, Warden, and Administrator. | #4, #8 | `UserRole` and `role_required` in `core/models.py` and `core/permissions.py`; guarded endpoints in `core/views.py`. | TC-SEC-02; `RoleBasedAccessTests` — **Pass (CI)**. |
 | HMS-SR-003 | Store passwords using secure one-way hashing, never plaintext. | #19, #8 | Django password hashing; verified in `core/test_security.py` and `core/tests.py`. | TC-SEC-03; `PasswordHashingTests.test_user_password_is_stored_as_a_verifiable_hash`, `StudentRecordTests.test_passwords_are_stored_using_a_hash` — **Pass (CI)**. |
-| HMS-SR-004 | Protect production client-server communication with HTTPS/TLS. | #21 (open), #8 | Production security settings in `config/settings.py`; example Nginx TLS proxy in `deploy/nginx.conf`; deployment guidance in `deploy/README.md`. Certificate and host are deployment-supplied. | TC-SEC-04 — **Partial**: Django HTTPS redirect/proxy behavior is tested by `HttpsProxySecurityTests`; no live TLS handshake or deployed certificate was verified. |
+| HMS-SR-004 | Protect production client-server communication with HTTPS/TLS. | #21 (closed), #8 | Production security settings in `config/settings.py`; example Nginx TLS proxy in `deploy/nginx.conf`; operator setup and verification steps in `deploy/README.md`. Certificate, hostname, DNS, and deployed host are external. | TC-SEC-04 — **Partial**: `HttpsProxySecurityTests` and `HttpsDeploymentConfigTests.test_nginx_terminates_tls_and_sets_trusted_proxy_headers` verify Django/proxy configuration; no live TLS handshake or deployed certificate was verified. |
 | HMS-SR-005 | Validate inputs and mitigate injection/malformed-input risks. | #20, #8 | Forms in `core/forms.py`; Django ORM-backed queries and input checks in `core/views.py`. | TC-SEC-05; `InputValidationSecurityTests` — **Pass (CI)** for the exercised malformed and injection-oriented inputs. |
 
 The matrix contains 29 unique numbered SRS IDs: 19 HMS-F requirements, five
@@ -49,9 +49,9 @@ this baseline, so it is not represented as a passing numbered requirement.
 ## Latest test execution
 
 The latest successful Django CI run on `main` is
-[run 43698611722](https://github.com/SE-Team-5-28/SE_Project/actions/runs/43698611722)
-for commit `6846c8485608c8ad8000ebaa6a9906bfe5df070c` (2026-11-15). Its job ran
-`python manage.py check` and `python manage.py test`; **117 tests ran, 116
+[run 43699089752](https://github.com/SE-Team-5-28/SE_Project/actions/runs/43699089752)
+for commit `fd5f0d737ab827859aa87ba340615b2fdd81544e` (2026-11-15). Its job ran
+`python manage.py check` and `python manage.py test`; **120 tests ran, 119
 passed, one was skipped, and none failed**. The skipped test is
 `AllocationConcurrencyTests.test_two_concurrent_requests_cannot_overfill_room`,
 which explicitly requires MySQL. CI sets `DB_ENGINE=sqlite`, so the run does
@@ -69,8 +69,8 @@ not verify MySQL-specific database behavior.
   browser checks and usability results are still absent.
 - **Recovery (#7):** the issue is closed, but no scheduled backup and restore
   evidence is present in this repository. TC-REC-01 remains unverified.
-- **Production TLS (#21):** the application and Nginx templates configure
-  HTTPS behavior, but the example domain/certificate paths need real
+- **Production TLS (#21, closed):** the application and Nginx templates
+  configure HTTPS behavior, but the example domain/certificate paths need real
   deployment values; no live handshake was performed.
 - **Database:** the SRS/STP specify MySQL; SQLite is the local/CI default.
   Production MySQL configuration and a MySQL server are external dependencies.
