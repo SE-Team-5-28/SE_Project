@@ -1,0 +1,44 @@
+{% extends 'core/base.html' %}
+{% block title %}My Transfer Requests{% endblock %}
+{% block content %}
+<div class="page-heading">
+    <h1>My transfer requests</h1>
+    <a class="button" href="{% url 'transfer_create' %}">Request a transfer</a>
+</div>
+<div class="table-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th>Requested room</th>
+                <th>Reason</th>
+                <th>Status</th>
+                <th>Submitted</th>
+                <th>Reviewed</th>
+                <th>Review note</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in transfer_requests %}
+                <tr>
+                    <td>
+                        {{ item.requested_room|default:"Not specified" }}
+                    </td>
+                    <td>{{ item.reason }}</td>
+                    <td>{{ item.get_status_display }}</td>
+                    <td>{{ item.created_at|date:"d M Y, H:i" }}</td>
+                    <td>
+                        {{ item.reviewed_at|date:"d M Y, H:i"|default:"Not reviewed" }}
+                    </td>
+                    <td>{{ item.review_note|default:"No note provided" }}</td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="6">
+                        You have not submitted any transfer requests.
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

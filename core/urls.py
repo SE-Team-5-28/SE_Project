@@ -49,6 +49,11 @@ urlpatterns = [
         name="check_out",
     ),
     path("transfers/", views.transfer_list, name="transfer_list"),
+    path(
+        "transfers/mine/",
+        views.my_transfer_requests,
+        name="my_transfer_requests",
+    ),
     path("complaints/", views.complaint_list, name="complaint_list"),
     path(
         "complaints/add/",

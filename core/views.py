@@ -414,7 +414,7 @@ def transfer_create(request):
             request,
             "Your room transfer request was submitted.",
         )
-        return redirect("dashboard")
+        return redirect("my_transfer_requests")
 
     return render(
         request,
@@ -432,6 +432,22 @@ def _student_profile_or_redirect(request):
             "Your account is not linked to a student profile.",
         )
         return None
+
+
+@role_required(User.Role.STUDENT)
+def my_transfer_requests(request):
+    student = _student_profile_or_redirect(request)
+    if student is None:
+        return redirect("dashboard")
+
+    transfer_requests = student.transfer_requests.select_related(
+        "requested_room",
+    ).order_by("-created_at", "-pk")
+    return render(
+        request,
+        "core/my_transfer_requests.html",
+        {"transfer_requests": transfer_requests},
+    )
 
 
 @role_required(User.Role.STUDENT)
