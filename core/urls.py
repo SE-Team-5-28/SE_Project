@@ -25,8 +25,23 @@ urlpatterns = [
     ),
     path("hostels/", views.hostel_list, name="hostel_list"),
     path("hostels/add/", views.hostel_create, name="hostel_create"),
+    path(
+        "hostels/<int:pk>/edit/",
+        views.hostel_update,
+        name="hostel_update",
+    ),
     path("blocks/add/", views.block_create, name="block_create"),
+    path(
+        "blocks/<int:pk>/edit/",
+        views.block_update,
+        name="block_update",
+    ),
     path("rooms/add/", views.room_create, name="room_create"),
+    path(
+        "rooms/<int:pk>/edit/",
+        views.room_update,
+        name="room_update",
+    ),
     path("allocations/", views.allocation_list, name="allocation_list"),
     path(
         "reports/occupancy/",

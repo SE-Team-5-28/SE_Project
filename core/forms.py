@@ -103,6 +103,19 @@ class RoomForm(forms.ModelForm):
 
         return value
 
+    def clean_capacity(self):
+        capacity = self.cleaned_data["capacity"]
+        if self.instance.pk:
+            occupied = self.instance.allocations.filter(
+                status=Allocation.Status.ACTIVE,
+            ).count()
+            if capacity < occupied:
+                raise forms.ValidationError(
+                    f"Capacity cannot be lower than the {occupied} "
+                    "active occupants."
+                )
+        return capacity
+
 
 class AllocationForm(forms.ModelForm):
     class Meta:

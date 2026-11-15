@@ -162,6 +162,23 @@ def hostel_create(request):
 
 @login_required
 @staff_required
+def hostel_update(request, pk):
+    hostel = get_object_or_404(Hostel, pk=pk)
+    form = HostelForm(request.POST or None, instance=hostel)
+    if request.method == "POST" and form.is_valid():
+        hostel = form.save()
+        audit("updated", hostel, request)
+        return redirect("hostel_list")
+
+    return render(
+        request,
+        "core/simple_form.html",
+        {"form": form, "title": "Update Hostel"},
+    )
+
+
+@login_required
+@staff_required
 def block_create(request):
     form = BlockForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
@@ -178,6 +195,23 @@ def block_create(request):
 
 @login_required
 @staff_required
+def block_update(request, pk):
+    block = get_object_or_404(Block, pk=pk)
+    form = BlockForm(request.POST or None, instance=block)
+    if request.method == "POST" and form.is_valid():
+        block = form.save()
+        audit("updated", block, request)
+        return redirect("hostel_list")
+
+    return render(
+        request,
+        "core/simple_form.html",
+        {"form": form, "title": "Update Block"},
+    )
+
+
+@login_required
+@staff_required
 def room_create(request):
     form = RoomForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
@@ -189,6 +223,27 @@ def room_create(request):
         request,
         "core/simple_form.html",
         {"form": form, "title": "Add Room"},
+    )
+
+
+@login_required
+@staff_required
+@transaction.atomic
+def room_update(request, pk):
+    room = get_object_or_404(
+        Room.objects.select_for_update(),
+        pk=pk,
+    )
+    form = RoomForm(request.POST or None, instance=room)
+    if request.method == "POST" and form.is_valid():
+        room = form.save()
+        audit("updated", room, request)
+        return redirect("hostel_list")
+
+    return render(
+        request,
+        "core/simple_form.html",
+        {"form": form, "title": "Update Room"},
     )
 
 

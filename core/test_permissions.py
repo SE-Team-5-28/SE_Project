@@ -121,6 +121,33 @@ class RoleBasedAccessTests(TestCase):
 
         self.assertEqual(response.status_code, 403)
 
+    def test_student_cannot_access_hostel_record_management(self):
+        hostel = Hostel.objects.create(name="Access Control Hostel")
+        block = Block.objects.create(hostel=hostel, name="A")
+        room = Room.objects.create(
+            block=block,
+            number="101",
+            room_code="ACCESS-101",
+            capacity=2,
+        )
+        self.client.force_login(self.student)
+
+        for route, record in (
+            ("hostel_update", hostel),
+            ("block_update", block),
+            ("room_update", room),
+        ):
+            with self.subTest(route=route):
+                response = self.client.get(
+                    reverse(route, args=[record.pk])
+                )
+                self.assertEqual(response.status_code, 302)
+
+        for route in ("hostel_list", "hostel_create", "block_create", "room_create"):
+            with self.subTest(route=route):
+                response = self.client.get(reverse(route))
+                self.assertEqual(response.status_code, 302)
+
     def test_anonymous_user_is_redirected_to_login(self):
         response = self.client.get(reverse("student_dashboard"))
 
