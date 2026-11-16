@@ -4,6 +4,10 @@ This runbook describes a reproducible local demonstration and records the
 tested application baseline. It is not a video, a human demo review, or
 production acceptance.
 
+##Demo Video
+
+[Watch the video](https://github.com/SE-Team-5-28/SE_Project/releases/tag/sprint-2-demo)
+
 ## Tested baseline
 
 - Application baseline: `main` at `f20a4d3a3bb78941b6f3254b69376c6993394900`,
